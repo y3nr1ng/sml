@@ -7,6 +7,27 @@
 
 /*-------------------------------------------------------------------------
  *
+ *  Dump the spot square (for debug)
+ *
+ *------------------------------------------------------------------------*/
+
+static void spotdump(int sxdim, int sydim, int *sp)
+{
+    int  x, y, k, xrng, yrng;
+
+    xrng = sxdim/2;
+    yrng = sydim/2;
+
+    k = 0;
+    for (y=-yrng; y <= yrng; y++) {
+    for (x=-xrng; x <= xrng; x++) {
+	printf("(x,y,II):  %03d %03d %d\n", x, y, sp[k]);
+	k++;
+    }}
+}
+
+/*-------------------------------------------------------------------------
+ *
  *  Functions to fit the image pixels to locate spot coordinate.
  *
  *------------------------------------------------------------------------*/
@@ -114,10 +135,9 @@ static void fit_result(sp_t *sp, double *a, double *da, double chisq)
  *
  *------------------------------------------------------------------------*/
 
-int SpotFit(para_t *p, sp_t *sp, framests_t *fsts)
+int SpotFit(para_t *p, double *x_fit, double *y_fit, sp_t *sp)
 {
-    static double *x_fit, *y_fit;
-    int    i, k, x, y, x_rng, y_rng, na, mloop, sdim_x, sdim_y, imglen;
+    int    na, mloop, imglen;
     int   *intensity, imax, imin;
     double a[10], da[10], chisq, tol;
     fitIntensity_t fdata;
@@ -128,11 +148,7 @@ int SpotFit(para_t *p, sp_t *sp, framests_t *fsts)
 
 // Initial parameters for fitting.
     intensity = sp->img;
-    sdim_x = p->x_find_pixels;
-    sdim_y = p->y_find_pixels;
-    imglen = sdim_x * sdim_y;
-    x_rng  = sdim_x / 2;
-    y_rng  = sdim_y / 2;
+    imglen = p->x_find_pixels * p->y_find_pixels;
     mloop  = 100;			// maxloop for fitting.
     tol    = 1.E-5;			// stopping criteria for fitting.
     if (p->mode == 0) {
@@ -142,24 +158,6 @@ int SpotFit(para_t *p, sp_t *sp, framests_t *fsts)
     else {
 	na      = 6;
 	fitfunc = fit_gaussian3D;
-    }
-
-// Prepare coord. of pixels of the spot, the coord. are relative to center.
-#ifdef USE_OMP
-#pragma omp critical
-#endif
-    if (x_fit == NULL) {
-	x_fit = malloc(imglen * sizeof(double));
-	y_fit = malloc(imglen * sizeof(double));
-	if (! x_fit || ! y_fit)
-	    pstop("!!! SpotFit: not enough memory.\n");
-	k = 0;
-	for (y=-y_rng; y <= y_rng; y++) {
-	for (x=-x_rng; x <= x_rng; x++) {
-	    x_fit[k] = x;
-	    y_fit[k] = y;
-	    k ++;
-	}}
     }
 
 // Prepare initial parameters for fitting.
@@ -198,22 +196,15 @@ int SpotFit(para_t *p, sp_t *sp, framests_t *fsts)
     }
     else {
         if (a[0]<0.0 || a[1]<0.0 || a[2]<0.0 || a[5]<0.0) return -1;
-	if (a[1]  > p->max_x   || a[2]  > p->max_y)        return -1;
+	if (a[1]  > p->max_x   || a[2]  > p->max_y)       return -1;
 	if (da[1] > p->max_dx  || da[2] > p->max_dy ||
 	    da[3] > p->max_dwx || da[4] > p->max_dwy ||
 	    a[0]/a[5] < p->min_SN || da[0]/a[0] > p->max_dI_I) return -1;
 	a[3] = fabs(a[3]);
 	a[4] = fabs(a[4]);
     }
-
     fit_result(sp, a, da, chisq);
-#ifdef USE_OMP
-#pragma omp critical
-#endif
-    if (fsts != NULL) {
-	i = sp->fID - p->frameID1;
-	fsts[i].n_event ++;
-    }
+
     return 0;
 }
 

@@ -6,6 +6,27 @@
 #endif
 #include "pix.h"
 
+/*---------------------------------------------------------------------------
+ *
+ *      Distribute frames to each threads or parallel processes
+ *
+ *--------------------------------------------------------------------------*/
+
+static void
+frameDistribution(int myid, int nprc, int tot_fID0, int tot_fIDN,
+		  int *fID0, int *fIDN)
+{
+    int  nframe, nhandle, ID0, IDN;
+
+    nframe  =  tot_fIDN - tot_fID0 + 1;
+    nhandle =  nframe / nprc;
+    nhandle = (nframe % nprc == 0) ? nhandle : nhandle+1;
+    ID0     =  myid * nhandle + tot_fID0;
+    IDN     = (ID0+nhandle <= tot_fIDN) ? ID0+nhandle : tot_fIDN;
+    *fID0   =  ID0;
+    *fIDN   =  IDN;
+}
+
 /*-------------------------------------------------------------------------
  *
  *	Initialization of spot finding for each thread.
@@ -118,20 +139,17 @@ void dframe_spot(para_t *p)
 #ifdef USE_OMP
     myid = omp_get_thread_num();
     nprc = omp_get_num_threads();
-    frameDistribution(myid, nprc, p->frameID1, p->frameID2, &fID0, &fIDN);
 #else
     myid = p->myid;
     nprc = p->nprc;
-    fID0 = p->frameID1;
-    fIDN = p->frameID2;
 #endif
+    frameDistribution(myid, nprc, p->frameID1, p->frameID2, &fID0, &fIDN);
     pp  = frame_spot_thinit(p, myid, nprc);
-    fio = frameIO_ReOpen(p);
+    fio = frameIO_Open(p);
     oneprec = (fIDN-fID0+1) / (100 / nprc);
  
     fm1 = frameIO(p, fio, fIDN);		// load the *next* frame
     n   = 0;
-    printf("image size: %d x %d\n", fm1->dim_x, fm1->dim_y);
     for (fID=fIDN-1; fID >= fID0; fID--) {
 	fm0 = frameIO(p, fio, fID);		// load the *this* frame
 	if (p->alg == 0)
@@ -176,9 +194,8 @@ void sframe_spot(para_t *p)
     frameloc_t *fm=NULL;
 
     pp  = frame_spot_thinit(p, p->myid, p->nprc);
-    fio = frameIO_ReOpen(p);
+    fio = frameIO_Open(p);
     fm  = frameIO(p, fio, p->frameID2);
-    printf("image size: %d x %d\n", fm->dim_x, fm->dim_y);
     if (p->alg == 0)
 	frameSpots(p, pp, fm, NULL);
     else
@@ -200,59 +217,93 @@ void sframe_spot(para_t *p)
 
 void spot_fitting(para_t *p)
 {
-    FILE   *f;
-    double  dt;
-    int     i, r, n, oneperc;
+    FILE    *f;
+    double  *x_fit, *y_fit, dt;
+    sp_t   **sp;
+    int      i, x, y, r, n, oneperc; 
+    int      sdim_x, sdim_y, x_rng, y_rng, imglen;
 
+//  Prepare to show the progress of running.
     printf("%d: found candidate spots: %d\n", p->myid, p->n_sp1);
     fflush(stdout);
     oneperc = p->n_sp1 / 100;
-    n = 0;
 
+//  Prepare coordinate of pixels of the spot, which is relative to its center.
+    sdim_x = p->x_find_pixels;
+    sdim_y = p->y_find_pixels;
+    imglen = sdim_x * sdim_y;
+    x_rng  = sdim_x / 2;
+    y_rng  = sdim_y / 2;
+    x_fit  = malloc(imglen * sizeof(double));
+    y_fit  = malloc(imglen * sizeof(double));
+    if (! x_fit || ! y_fit)
+        pstop("!!! SpotFit: not enough memory.\n");
+    i = 0;
+    for (y=-y_rng; y <= y_rng; y++) {
+    for (x=-x_rng; x <= x_rng; x++) {
+        x_fit[i] = x;
+        y_fit[i] = y;
+        i ++;
+    }}
+
+//  Fitting for the normal spots.
+    sp = p->sp1;
+    n  = 0;
 #ifdef USE_OMP
 #pragma omp parallel for private(i,r) reduction(+:n)
 #endif
     for (i=0; i < p->n_sp1; i++) {
-	r = SpotFit(p, p->sp1[i], p->fsts);
+	r = SpotFit(p, x_fit, y_fit, sp[i]);
 	if (r == 0) n ++;
 	if (oneperc > 0 && i % oneperc == 0) {
 	    fprintf(stderr, ".");
 	    fflush(stderr);
 	}
     }
-    printf("\n");
-    printf("%d: total valid particles: %d\n", p->myid, n);
+    printf("\n%d: total valid particles: %d\n", p->myid, n);
 
-    n = 0;
+//  Fitting for the high-intensity spots.
+    sp = p->sp2;
+    n  = 0;
+#ifdef USE_OMP
+#pragma omp parallel for private(i,r) reduction(+:n)
+#endif
     for (i=0; i < p->n_sp2; i++) {
-	r = SpotFit(p, p->sp2[i], NULL);
-	if (r == 0) n ++;
+	r = SpotFit(p, x_fit, y_fit, sp[i]);
+	if (r == 0) n++;
     }
-/*
- *  Output the result.
- */
-    f = out_fit_init(p, p->outfn);
+    printf("%d: total high-intensity particles: %d\n", p->myid, n);
+
+//  Output the results of normal spots, and update the statistics.
+    f  = out_fit_init(p, p->outfn);
+    sp = p->sp1;
     for (i=0, n=0; i < p->n_sp1; i++) {
-	if (p->sp1[i] && p->sp1[i]->res) {
-	    out_fit(p, f, n, p->sp1[i]);
+	if (sp[i] && sp[i]->res) {
+	    out_fit(p, f, n, sp[i]);
+	    x = sp[i]->fID - p->frameID1;
+	    p->fsts[x].n_event ++;
 	    n ++;
 	}
     }
     if (p->myid == 0) {
 	dt = get_realtime();
 	fprintf(f, "ExecTime: %E sec\n", dt);
+	printf("ExecTime: %E sec\n", dt);
     }
     out_fit_close(f);
 
-    f = out_fit_init(p, p->outfnH);
+//  Output the results of high-intensity spots.
+    f  = out_fit_init(p, p->outfnH);
+    sp = p->sp2;
     for (i=0, n=0; i < p->n_sp2; i++) {
-	if (p->sp2[i] && p->sp2[i]->res) {
-	    out_fit(p, f, n, p->sp2[i]);
+	if (sp[i] && sp[i]->res) {
+	    out_fit(p, f, n, sp[i]);
 	    n ++;
 	}
     }
     out_fit_close(f);
 
+//  Output the statistics and the sum of pixels.
     out_framests(p);
     out_framesum(p);
 }

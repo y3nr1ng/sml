@@ -94,41 +94,38 @@ void mx_sub_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr)
     y2 = sdim[3];
     sdim_x = x2-x1+1;
 
-    for (j=y1; j <= y2; j++) {
-    for (i=x1; i <= x2; i++) {
-	yy = (i-x1) + (j-y1)*sdim_x;
-	if (i >= 0 && j >= 0 && i < dim_x && j < dim_y) { 
-	    xx = i + j*dim_x;
-	    mr[yy] = mx[xx];
-	}
-	else
-	    mr[yy] = 0;
-    }}
-}
-
-void mx_subT_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr)
-{
-    int    x1, x2, y1, y2, sdim_y;
-    int    i, j, xx, yy;
-
-    x1 = sdim[0];
-    x2 = sdim[1];
-    y1 = sdim[2];
-    y2 = sdim[3];
-    sdim_y = y2-y1+1;
-
 #pragma omp parallel for private(i,j,xx,yy)
     for (j=y1; j <= y2; j++) {
     for (i=x1; i <= x2; i++) {
-	yy = (i-x1)*sdim_y + (j-y1);
-	if (i >= 0 && j >= 0 && i < dim_x && j < dim_y) { 
-	    xx = i + j*dim_x;
-	    mr[yy] = mx[xx];
-	}
-	else
-	    mr[yy] = 0;
+	yy = (i-x1) + (j-y1)*sdim_x;
+	xx = i + j*dim_x;
+	mr[yy] = mx[xx];
     }}
 }
+
+// void mx_subT_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr)
+// {
+//     int    x1, x2, y1, y2, sdim_y;
+//     int    i, j, xx, yy;
+// 
+//     x1 = sdim[0];
+//     x2 = sdim[1];
+//     y1 = sdim[2];
+//     y2 = sdim[3];
+//     sdim_y = y2-y1+1;
+// 
+// #pragma omp parallel for private(i,j,xx,yy)
+//     for (j=y1; j <= y2; j++) {
+//     for (i=x1; i <= x2; i++) {
+// 	yy = (i-x1)*sdim_y + (j-y1);
+// 	if (i >= 0 && j >= 0 && i < dim_x && j < dim_y) { 
+// 	    xx = i + j*dim_x;
+// 	    mr[yy] = mx[xx];
+// 	}
+// 	else
+// 	    mr[yy] = 0;
+//     }}
+// }
 
 void mx_rsub_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr)
 {
@@ -140,12 +137,11 @@ void mx_rsub_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr)
     y1 = sdim[2];
     y2 = sdim[3];
 
+#pragma omp parallel for private(i,j,xx)
     for (j=y1; j <= y2; j++) {
     for (i=x1; i <= x2; i++) {
-	if (i >= 0 && j >= 0 && i < dim_x && j < dim_y) { 
-	    xx = i + j*dim_x;
-	    mr[xx] = mx[xx];
-	}
+	xx = i + j*dim_x;
+	mr[xx] = mx[xx];
     }}
 }
 

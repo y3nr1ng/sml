@@ -107,37 +107,52 @@ static frameloc_t *FR_tiff(para_t *p, frameIO_t *fio, int idx)
 {
     frameloc_t *fm=NULL;
     TIFF       *tif=NULL;
-    tsize_t     s_strip;
-    tstrip_t    n_strip;
-    uint32     *bc, w, h, i;
-    char       *data, *dp;
+    uint32      imageWidth, imageLength;
+    uint32      tileWidth, tileLength;
+    uint32      x, y, xx, yy, w, h;
+    char       *data, *data2, *dp;
+    tsample_t   sample;
     matmx_t     mx;
+    unsigned short *d0, *d2;
 
     tif = (TIFF *)fio->imgf;
     if (TIFFSetDirectory(tif, (tdir_t)idx) != 1)
         pstop("TIFF: cannot set directory: %d\n", idx);
-    s_strip = TIFFStripSize(tif);
-    n_strip = TIFFNumberOfStrips(tif);
-    data    = _TIFFmalloc(s_strip*n_strip);
-    dp      = data;
-    if (data == NULL)
+
+    TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
+    TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imageLength);
+    TIFFGetField(tif, TIFFTAG_TILEWIDTH, &tileWidth);
+    TIFFGetField(tif, TIFFTAG_TILELENGTH, &tileLength);
+    data  = _TIFFmalloc(TIFFTileSize(tif));
+    data2 = _TIFFmalloc(TIFFTileSize(tif));
+    if (data == NULL || data2 == NULL)
 	pstop("!!! TIFF: not enough memory.\n");
+
+    sample = 0;
+    for (y=0; y < imageLength; y += tileLength) {
+    for (x=0; x < imageWidth;  x += tileWidth)  {
+        TIFFReadTile(tif, data, x, y, 0, sample);
+    }}
 
     w = p->img_W;
     h = p->img_H;
-    if (TIFFGetField(tif, TIFFTAG_STRIPBYTECOUNTS, &bc) != 1)
-        pstop("!!! TIFF: cannot get tag: TIFFTAG_STRIPBYTECOUNTS\n");
-    for (i=0; i < n_strip; i++) {
-        if (TIFFReadRawStrip(tif, i, dp, bc[i]) != bc[i])
-	    pstop("!!! TIFF: cannot read completed strip.\n");
-        dp += bc[i];
-    }
+
+    d0 = (unsigned short *)data;
+    d2 = (unsigned short *)data2;
+    for (x=0; x < w; x++) {
+    for (y=0; y < h; y++) {
+	xx = x + y*w;
+	yy = y + x*h;
+if (d0[xx] > 10000) printf("x, y, II: %d %d %d\n", x, y, d0[xx]);
+	d2[yy] = d0[xx];
+    }}
+
     mx.dim_x = w;
     mx.dim_y = h;
-    mx.data  = (void *)data;
+    mx.data  = (void *)data2;
     fm = frameCreate(p, idx, &mx, 's');
     _TIFFfree(data);
-
+    _TIFFfree(data2);
     return fm;
 }
 

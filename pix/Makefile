@@ -19,11 +19,17 @@
 #---------------------------------------------------------------------------
 #	For Linux without MPI
 #
-CC     := icc
-MPICC  := icc
-CFLAGS := -O2 -DUSE_OMP -openmp -Wall -wd981
+# CC     := icc
+# MPICC  := icc
+# CFLAGS := -O2 -DUSE_OMP -openmp -g -Wall -wd981
+# TIFF   := -ltiff
+# LAPACK := -L/opt/intel/Compiler/11.1/069/mkl/lib/em64t -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5
+
+CC     := gcc
+MPICC  := gcc
+CFLAGS := -O2 -DUSE_OMP -fopenmp -g -Wall
 TIFF   := -ltiff
-LAPACK := -L/opt/intel/Compiler/11.1/069/mkl/lib/em64t -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5
+LAPACK := -L/opt/intel/Compiler/11.1/069/mkl/lib/em64t -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -lgomp
 
 #---------------------------------------------------------------------------
 #	For Linux with MPI

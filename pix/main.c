@@ -386,13 +386,6 @@ static void inputs(int argc, char **argv, para_t *p)
 
     p->threshold1 = p->threshold1 / p->i_photon;
     p->threshold2 = p->threshold2 / p->i_photon;
-    p->max_x   = p->frame_x2 - p->frame_x1;
-    p->max_y   = p->frame_y2 - p->frame_y1;
-    p->max_dx  = p->max_dx  / p->nm_px_x;
-    p->max_dy  = p->max_dy  / p->nm_px_y;
-    p->max_dwx = p->max_dwx / p->nm_px_x;
-    p->max_dwy = p->max_dwy / p->nm_px_y;
-
     if (p->mode > 0)
 	read_cabf(p, cabf);
 }
@@ -421,17 +414,16 @@ int main(int argc, char **argv)
 
     frameIO_init(&p);
     if (p.frameID2 > p.frameID1) {
-#ifdef USE_OMP
-#pragma omp parallel
-#endif
 	dframe_spot(&p);
 	printf("\n");
 	qsort(p.sp1, p.n_sp1, sizeof(sp_t *), spot_cmp);
 	qsort(p.sp2, p.n_sp2, sizeof(sp_t *), spot_cmp);
 	out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
     }
-    else
+    else {
 	sframe_spot(&p);
+	out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
+    }
 
     if (p.rmode == 1)
 	spot_output_img(&p);

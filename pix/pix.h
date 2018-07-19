@@ -53,9 +53,9 @@ typedef struct {		// Coefficient for the calibration curve
 
 typedef struct {		// main structure for frame localization.
     int      ID;		//   ID of this frame.
-    int      dim_x, dim_y;	//   dimension of image.
-    char     frame_type;	//   the data type of the frame.
-    void    *frame;		//   the image of this image.
+    int      dim_x, dim_y;	//   dimension of the ROI image.
+    char     type;		//   the data type of the frame.
+    void    *frame;		//   the image of this frame.
 } frameloc_t;
 
 /*-------------------------------------------------------------------------
@@ -152,6 +152,9 @@ typedef struct {
     calb3D_t    cay;		// parameters for calibration curve for wy
     int         verb;		// verbose message
 
+    int         tot_frames;	// total number of frames.
+    int         img_W, img_H;   // image width, image height
+
     int         n_sp1;		// current number of sp (for normal spots)
     sp_t      **sp1;		// candidate spots (for normal spots)
     int         n_sp2;		// current number of sp (for high intensity)
@@ -175,20 +178,18 @@ void spot_fitting(para_t *p);
 void spot_output_img(para_t *p);
 int  spot_cmp(const void *a, const void *b);
 
-void frameDistribution(int myid, int nprc, int tot_fID0, int tot_fIDN,
-                       int *fID0, int *fIDN);
-void frameIO_init(para_t *p);
-void matFree(matfile_t *m);
-void frameIO_Close(para_t *p, frameIO_t *fio);
-frameIO_t  *frameIO_ReOpen(para_t *p);
+frameIO_t  *frameIO_Open(para_t *p);
+void        frameIO_Close(para_t *p, frameIO_t *fio);
+void        frameIO_init(para_t *p);
 frameloc_t *frameIO(para_t *p, frameIO_t *fio, int idx);
 matfile_t  *matRead(char *fn);
+void        matFree(matfile_t *m);
 
-frameloc_t *frameCreate(para_t *p, int idx, int rc, matmx_t *mx, char type);
+frameloc_t *frameCreate(para_t *p, int idx, matmx_t *mx, char type);
 void  frameDelete(frameloc_t *fm);
 void  frameSpots(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1);
 void  frameSpot2(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1);
-int   SpotFit(para_t *p, sp_t *sp, framests_t *fsts);
+int   SpotFit(para_t *p, double *x_fit, double *y_fit, sp_t *sp);
 int   solve_z_w(para_t *p, calb3D_t *fd, double w, double dw,
 		char *v, char *dv);
 int   solve_z_wxowy(para_t *p, double *a, double *da, char *v, char *dv);
