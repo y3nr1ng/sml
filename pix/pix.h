@@ -37,10 +37,12 @@ typedef struct {
 
 typedef struct {		// Coefficient for the calibration curve
     double   w0, dw0;		//   to find the z position of spots.
-    double   A,  dA;
-    double   B,  dB;
-    double   c,  dc;
-    double   d,  dd;
+    double   A[2], dA;
+    double   B[2], dB;
+    double   c[2], dc;
+    double   d[2], dd;
+
+    double   WW, dW;		// obtained from spot fitting.
 } calb3D_t;
 
 /*-------------------------------------------------------------------------
@@ -51,9 +53,9 @@ typedef struct {		// Coefficient for the calibration curve
 
 typedef struct {		// main structure for frame localization.
     int      ID;		//   ID of this frame.
-    int      dim_x, dim_y;	//   dimension of the ROI image.
-    char     type;		//   the data type of the frame.
-    void    *frame;		//   the image of this frame.
+    int      dim_x, dim_y;	//   dimension of image.
+    char     frame_type;	//   the data type of the frame.
+    void    *frame;		//   the image of this image.
 } frameloc_t;
 
 /*-------------------------------------------------------------------------
@@ -65,13 +67,6 @@ typedef struct {		// main structure for frame localization.
 typedef struct {
     double    a[6], da[6];	// fitting parameters.
     double    chisq;		// fitting chisq/ndof.
-    double    zx[2], dzx[2];	// solved z-coordinate (using wx).
-    double    zy[2], dzy[2];	// solved z-coordinate (using wy).
-    double    zr[2], dzr[2];	// solved z-coordinate (using wx/wy).
-    double    z, dz;		// the best determination of z.
-    int       n_zx;		// # of solutions for wx.
-    int       n_zy;		// # of solutions for wy.
-    int       n_zr;		// # of solutions for wr.
 } fitres_t;
 
 typedef struct {
@@ -94,11 +89,34 @@ typedef struct {
 
 /*-------------------------------------------------------------------------
  *
+ *  Code parameters for each thread.
+ *
+ *------------------------------------------------------------------------*/
+
+typedef struct {
+    int         myid, nprc;
+
+    int         m_sp1;		// current buffer size of sp (normal spots)
+    int         n_sp1;		// current number of sp (normal spots)
+    sp_t      **sp1;		// candidate spots (normal spots)
+    int         m_sp2;		// current buffer size of sp (high intensity)
+    int         n_sp2;		// current number of sp (high intensity)
+    sp_t      **sp2;		// candidate spots (for high intensity)
+
+    int         x_find_pixels;	// x range for finding pixels.
+    int         y_find_pixels;	// y range for finding pixels.
+    int         nfsep;		// max separation of frames of each particle
+} parath_t;
+
+/*-------------------------------------------------------------------------
+ *
  *  Code parameters.
  *
  *------------------------------------------------------------------------*/
 
 typedef struct {
+    int         myid;		// MPI: my process id.
+    int         nprc;		// MPI: n_procs.
     int         imgfmt;		// image file format.
     char       *imgfn;		// image filename.
     char       *outfn;		// output filename (for normal spots).
@@ -129,22 +147,15 @@ typedef struct {
     double      max_dwy;	// maximum allowed dw(y) in fitting
     double      min_SN;		// minimum allowed S/N ratio
     double      max_dI_I;	// maximum allowed dII/II in fitting
-    double	max_del_z;	// maximum z variation: |1-z(wx)/z(wy)|
     double      z1, z2, dz;	// parameters for bisection solver
     calb3D_t    cax;		// parameters for calibration curve for wx
     calb3D_t    cay;		// parameters for calibration curve for wy
     int         verb;		// verbose message
 
-    int         tot_frames;	// total number of frames.
-    int         img_W, img_H;   // image width, image height
-
-    int         m_sp1;		// current buffer size of sp (normal spots)
     int         n_sp1;		// current number of sp (for normal spots)
     sp_t      **sp1;		// candidate spots (for normal spots)
-    int         m_sp2;		// current buffer size of sp (high intensity)
     int         n_sp2;		// current number of sp (for high intensity)
     sp_t      **sp2;		// candidate spots (for high intensity)
-
     framests_t *fsts;		// for frame statistics.
     int        *psum;		// sum over all pixels.
     double      max_x;		// width of the image (nm).
@@ -158,29 +169,33 @@ typedef struct {
  *
  *------------------------------------------------------------------------*/
 
-void spot_dframe(para_t *p);
-void spot_sframe(para_t *p);
+void dframe_spot(para_t *p);
+void sframe_spot(para_t *p);
 void spot_fitting(para_t *p);
 void spot_output_img(para_t *p);
 int  spot_cmp(const void *a, const void *b);
 
-frameIO_t  *frameIO_Open(para_t *p);
-void        frameIO_Close(para_t *p, frameIO_t *fio);
-void        frameIO_init(para_t *p);
+void frameDistribution(int myid, int nprc, int tot_fID0, int tot_fIDN,
+                       int *fID0, int *fIDN);
+void frameIO_init(para_t *p);
+void matFree(matfile_t *m);
+void frameIO_Close(para_t *p, frameIO_t *fio);
+frameIO_t  *frameIO_ReOpen(para_t *p);
 frameloc_t *frameIO(para_t *p, frameIO_t *fio, int idx);
 matfile_t  *matRead(char *fn);
-void        matFree(matfile_t *m);
 
-frameloc_t *frameCreate(para_t *p, int idx, matmx_t *mx, char type);
+frameloc_t *frameCreate(para_t *p, int idx, int rc, matmx_t *mx, char type);
 void  frameDelete(frameloc_t *fm);
-void  frameSpots(para_t *p, frameloc_t *fm0, frameloc_t *fm1);
-void  frameSpot2(para_t *p, frameloc_t *fm0, frameloc_t *fm1);
-int   SpotFit(para_t *p, double *x_fit, double *y_fit, sp_t *sp);
-int   solve_z_w(para_t *p, fitres_t *res);
+void  frameSpots(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1);
+void  frameSpot2(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1);
+int   SpotFit(para_t *p, sp_t *sp, framests_t *fsts);
+int   solve_z_w(para_t *p, calb3D_t *fd, double w, double dw,
+		char *v, char *dv);
+int   solve_z_wxowy(para_t *p, double *a, double *da, char *v, char *dv);
 void  frame_sum(para_t *p, frameloc_t *fm);
 
 void  out_spotlist(char *outfn, int nsp, int sqsz, sp_t **sp);
-FILE *out_fit_init(para_t *p, char *outfn, int head);
+FILE *out_fit_init(para_t *p, char *outfn);
 void  out_fit(para_t *p, FILE *f, int Sid, sp_t *sp);
 void  out_fit_close(FILE *f);
 void  out_framests(para_t *p);
@@ -202,7 +217,6 @@ void  mx_sub_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr);
 void  mx_subT_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr);
 void  mx_rsub_s(int dim_x, int dim_y, int *sdim, short *mx, short *mr);
 int   mx_inv(int N, double *A, int NRHS, double *B);
-void  dsysv(int N, double *A, int Nrhs, double *B, double *X);
 
 int    skipline(FILE *f);
 int    inp_cutcmt(char *buf);

@@ -11,7 +11,7 @@
  *
  *------------------------------------------------------------------------*/
 
-frameloc_t *frameCreate(para_t *p, int idx, matmx_t *mx, char type)
+frameloc_t *frameCreate(para_t *p, int idx, int rc, matmx_t *mx, char type)
 {
     frameloc_t *fm;
     int         sdim[4], elem_size=0;
@@ -19,16 +19,9 @@ frameloc_t *frameCreate(para_t *p, int idx, matmx_t *mx, char type)
     if ((fm = malloc(sizeof(frameloc_t))) == NULL)
 	pstop("!!! frameCreate: not enough memory.\n");
     fm->ID    = idx;
-    fm->type  = type;
     fm->dim_x = p->frame_x2 - p->frame_x1 + 1;
     fm->dim_y = p->frame_y2 - p->frame_y1 + 1;
-
-    if (fm->dim_x > mx->dim_x)
-	pstop("!!! frameCreate: image selected dim_x exceeds, max=%d\n",
-	       mx->dim_x);
-    if (fm->dim_y > mx->dim_y)
-	pstop("!!! frameCreate: image selected dim_x exceeds, max=%d\n",
-	       mx->dim_y);
+    fm->frame_type = type;
 
     switch (type) {
     case 's':
@@ -54,12 +47,16 @@ frameloc_t *frameCreate(para_t *p, int idx, matmx_t *mx, char type)
 	sdim[1] = p->frame_x2;
 	sdim[2] = p->frame_y1;
 	sdim[3] = p->frame_y2;
-	mx_sub_s(mx->dim_x, mx->dim_y, sdim, (short*)(mx->data),
-		 (short*)fm->frame);
+	if (rc == 0)
+	    mx_sub_s(mx->dim_x, mx->dim_y, sdim, (short*)(mx->data),
+		     (short*)fm->frame);
+	else
+	    mx_subT_s(mx->dim_x, mx->dim_y, sdim, (short*)(mx->data),
+		     (short*)fm->frame);
     }
-    else
+    else {
 	memset(fm->frame, 0, fm->dim_x*fm->dim_y*elem_size);
-
+    }
     return fm;
 }
 
@@ -75,9 +72,9 @@ void frameDelete(frameloc_t *fm)
  *
  *------------------------------------------------------------------------*/
 
-static void push_spot(para_t *p, int mode, int fID, int x, int y, short *simg)
+static void push_spot(parath_t *p, int mode, int fID, int x, int y, short *simg)
 {
-    int    m_sp, n_sp, nfsep, i, j, ii, dx, dy, df, imglen;
+    int    m_sp, n_sp, i, j, ii, dx, dy, df, imglen;
     sp_t **sp;
 
     if (mode == 0) {
@@ -99,12 +96,11 @@ static void push_spot(para_t *p, int mode, int fID, int x, int y, short *simg)
     }
 
 // Search for the same spot within nfsep frames
-    ii    = -1;
-    nfsep = p->nfsep;
+    ii = -1;
     for (i=n_sp-1; i >= 0; i--) {
 	df = (sp[i] != NULL) ? sp[i]->fID - fID : 0;
-	if (df <= 0) continue;
-	if (df > nfsep) break;
+	if (df <= 0)        continue;
+	if (df >  p->nfsep) break;
 
 	dx = abs(x - sp[i]->x);
 	dy = abs(y - sp[i]->y);
@@ -137,7 +133,6 @@ static void push_spot(para_t *p, int mode, int fID, int x, int y, short *simg)
 
 // Summing the spot pixels for this frame.
     sp[i]->cnt ++;
-#pragma omp parallel for private(j)
     for (j=0; j < imglen; j++)
 	sp[i]->img[j] += (int)(simg[j]);
 
@@ -195,7 +190,7 @@ static int SpotCheck(para_t *p, short *intensity)
  *
  *------------------------------------------------------------------------*/
 
-void frameSpots(para_t *p, frameloc_t *fm0, frameloc_t *fm1)
+void frameSpots(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1)
 {
     int     sdim[4], sdim_x, sdim_y, rng_x, rng_y;
     int     dim_x, dim_y, x, y, xx, r;
@@ -240,9 +235,9 @@ void frameSpots(para_t *p, frameloc_t *fm0, frameloc_t *fm1)
 	if (frame1)
 	    mx_rsub_s(dim_x, dim_y, sdim, frame1, frame0);
 	if (r == 0)
-	    push_spot(p, 0, fm0->ID, x, y, spot);
+	    push_spot(pp, 0, fm0->ID, x, y, spot);
 	else if (p->outfnH != NULL)
-	    push_spot(p, 1, fm0->ID, x, y, spot);
+	    push_spot(pp, 1, fm0->ID, x, y, spot);
     }}
 
     free(spot);
@@ -274,27 +269,19 @@ static int pixel_cmp(const void *a, const void *b)
 	return 0;
 }
 
-static int
-spot_sort(int Imin, int dim_x, int dim_y, short *dframe, sp_sort_t *sps)
+static void spot_sort(int dim_x, int dim_y, short *dframe, sp_sort_t *sps)
 {
-    int    i, j, k, k0;
-    short  II;
+    int  i, j, k;
 
     k = 0;
     for (j=0; j < dim_y; j++) {
     for (i=0; i < dim_x; i++) {
-	k0 = i+j*dim_x;
-	II = dframe[k0];
-	if (II > Imin) {
-	    sps[k].x  = i;
-	    sps[k].y  = j;
-	    sps[k].II = II;
-	    k ++;
-	}
+	sps[k].x  = i;
+	sps[k].y  = j;
+	sps[k].II = (short)((dframe[k] < 0) ? 0 : dframe[k]);
+	k ++;
     }}
-    qsort(sps, k, sizeof(sp_sort_t), pixel_cmp);
-
-    return k;
+    qsort(sps, dim_x*dim_y, sizeof(sp_sort_t), pixel_cmp);
 }
 
 static int check_mark(int x0, int y0, int wx, int wy, int dim_x, int dim_y,
@@ -302,15 +289,13 @@ static int check_mark(int x0, int y0, int wx, int wy, int dim_x, int dim_y,
 {
     int  xx, x, y;
 
-    if (x0-wx < 0 || y0-wy < 0 || x0+wx >= dim_x || y0+wy >= dim_y) return -1;
-
     for (y=y0-wy; y <= y0+wy; y++) {
     for (x=x0-wx; x <= x0+wx; x++) {
+	if (x < 0 || y < 0 || x >= dim_x || y >= dim_y) return -1;
 	xx = x + y*dim_x;
 	if (mark[xx] != 0) return -1;
     }}
 
-#pragma omp parallel for private(x,y,xx)
     for (y=y0-wy; y <= y0+wy; y++) {
     for (x=x0-wx; x <= x0+wx; x++) {
 	xx = x + y*dim_x;
@@ -319,10 +304,10 @@ static int check_mark(int x0, int y0, int wx, int wy, int dim_x, int dim_y,
     return 0;
 }
 
-void frameSpot2(para_t *p, frameloc_t *fm0, frameloc_t *fm1)
+void frameSpot2(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1)
 {
     int        sdim[4], sdim_x, sdim_y, rng_x, rng_y;
-    int        dim_x, dim_y, nsp, x, y, i;
+    int        dim_x, dim_y, x, y, i;
     short     *frame0, *frame1, *dframe, *spot, *mark, II;
     sp_sort_t *sps;
 
@@ -348,10 +333,10 @@ void frameSpot2(para_t *p, frameloc_t *fm0, frameloc_t *fm1)
     }
     else
 	dframe = frame0;
-    nsp = spot_sort(p->threshold1, dim_x, dim_y, dframe, sps);
+    spot_sort(dim_x, dim_y, dframe, sps);
 
 // Scan the frame and get the position for the candidate spots.
-    for (i=0; i < nsp; i++) {
+    for (i=0; i < dim_x*dim_y; i++) {
 	x  = sps[i].x;
 	y  = sps[i].y;
 	II = sps[i].II;
@@ -366,9 +351,9 @@ void frameSpot2(para_t *p, frameloc_t *fm0, frameloc_t *fm1)
 	if (frame1)
 	    mx_rsub_s(dim_x, dim_y, sdim, frame1, frame0);
 	if ((double)II <= p->threshold2)
-	    push_spot(p, 0, fm0->ID, x, y, spot);
+	    push_spot(pp, 0, fm0->ID, x, y, spot);
 	else if (p->outfnH != NULL)
-	    push_spot(p, 1, fm0->ID, x, y, spot);
+	    push_spot(pp, 1, fm0->ID, x, y, spot);
     }
     free(spot);
     free(mark);

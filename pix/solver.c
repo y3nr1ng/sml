@@ -5,227 +5,132 @@
 
 /*-------------------------------------------------------------------------
  *
- *	Compute:  wx(z) or wy(z),   *dy = errbar^2
- *
- *------------------------------------------------------------------------*/
-
-static int func_ca(void *data, double x, double *y, double *dy)
-{
-    calb3D_t  *ca = (calb3D_t *)data;
-    double     w0, A, B, c, d, dw0, dA, dB, dc, dd;
-    double     xi, sq, dxi, dsq, ww;
-
-    A   = ca->A;
-    B   = ca->B;
-    c   = ca->c;
-    d   = ca->d;
-    dA  = ca->dA;
-    dB  = ca->dB;
-    dc  = ca->dc;
-    dd  = ca->dd;
-    w0  = ca->w0;
-    dw0 = ca->dw0;
-
-    xi  = (x-c)/d;
-    sq  = 1.0 + xi*xi*(1.0 + A*xi + B*xi*xi);
-    if (sq <= 0.0) return -1;
-    ww  = w0*w0*sq;
-    *y  = sqrt(ww);
-    if (dy == NULL) return 0;
-
-    dxi = (x*x+c*c)/(d*d) * (dd*dd)/(d*d) + (dc*dc)/(d*d);
-    dsq = xi*xi*((4.0 + xi*xi*(9.0*A*A + xi*xi*16.0*B*B))*dxi
-	       + xi*xi*xi*xi*(dA*dA + xi*xi*dB*dB));
-    *dy = ww*(dw0*dw0/(w0*w0) + dsq/(4.0*sq*sq));
-
-    return 0;
-}
-
-/*-------------------------------------------------------------------------
- *
- *	Compute:  wx(z)/wy(z),   *dy = errbar^2
- *
- *------------------------------------------------------------------------*/
-/*
-static int func_ca2(void *data, double x, double *y, double *dy)
-{
-    calb3D_t **cc = (calb3D_t **)data;
-    calb3D_t  *cx =  cc[0];
-    calb3D_t  *cy =  cc[1];
-    double    *pdx, *pdy;
-    double     yx, yy, dyx, dyy;
-    int        r1, r2;
-
-    if (dy == NULL) {
-	pdx = NULL;
-	pdy = NULL;
-    }
-    else {
-	pdx = &dyx;
-	pdy = &dyy;
-    }
-    r1 = func_ca(cx, x, &yx, pdx);
-    r2 = func_ca(cy, x, &yy, pdy);
-    if (r1 != 0 || r2 != 0)
-	return -1;
-
-    *y = yx/yy;
-    if (dy != NULL)
-	*dy = (yx*yx)/(yy*yy)*(dyx/(yx*yx) + dyy/(yy*yy));
-    return 0;
-}
-*/
-/*-------------------------------------------------------------------------
- *
  *	Bisection solver
  *
  *------------------------------------------------------------------------*/
 
-static int
-bisec(int mode, int (*func)(void *, double, double *, double *),
-      void *ca, double x0, double dd, double rhs, double drhs, double *x)
+static int bisection(double (*func)(void *, double, int *), void *fd,
+		     double x0, double y0, double dx, double tol, double *x)
 {
-    int     n=0, loop;
-    double *pdy0, *pdy1, x1, y0, y1, dy0, dy1, tol;
+    int    info=0, n=0;
+    double x1, y1;
 
-    loop = 100;
-    tol  = 1.e-10;
-    x1   = 0.0;
-    y0   = 0.0;
-    y1   = 0.0;
-    dy0  = 0.0;
-    dy1  = 0.0;
-    pdy0 = (mode == 0) ? NULL : &dy0;
-    pdy1 = (mode == 0) ? NULL : &dy1;
-
-    if (func(ca, x0, &y0, pdy0) != 0) return -1;
-    y0  = y0 - rhs;
-    dy0 = sqrt(dy0 + drhs*drhs);
-
-    if (mode == 1)
-	y0 = y0 + dy0;
-    else if (mode == 2)
-	y0 = y0 - dy0;
-
-    while (fabs(y0) > tol && n < loop) {
-	dd  = dd / 2.0;
-	x1  = x0 + dd;
-	if (func(ca, x1, &y1, pdy1) != 0) return -1;
-	y1  = y1 - rhs;
-	dy1 = sqrt(dy1 + drhs*drhs);
-
-	if (mode == 1)
-	    y1 += dy1;
-	else if (mode == 2)
-	    y1 -= dy1;
-
+    while (fabs(y0) > tol && n < 100) {
+	dx = dx / 2.0;
+	x1 = x0 + dx;
+	y1 = func(fd, x1, &info);
+	if (info != 0)
+	    return -1;
 	if (y0*y1 > 0.0) {
-	    x0  = x1;
-	    y0  = y1;
-	    dy0 = dy1;
-	    x1  = x1 + dd;
+	    x0 = x1;
+	    y0 = y1;
+	    x1 = x1 + dx;
 	}
 	n ++;
     }
     *x = x0;
-
     return 0;
 }
 
-static int
-solver(double x0, double x1, double dd,
-       int (*func)(void *, double, double *, double *),
-       void *ca, double rhs, double drhs, int nx, double *x, double *dx)
+static int solver(double x0, double x1, double dx,
+		  double (*func)(void *, double, int *),
+		  double (*dfunc)(void *, double),
+		  void *fd, int nx, double *x, double *xdev)
 {
-    int    i, npt, n0, n1, n2, r0, r1;
-    double y0, y1, dy0, dy1, xr1[16], xr2[16], dx1[16], dx2[16];
+    int    i, npt, nsol, info0, info1;
+    double y0, y1, tol;
 
-    npt = (int)((x1-x0)/dd)+1;
-    r0  = func(ca, x0, &y0, &dy0);
-    y0  = y0-rhs;
-    dy0 = sqrt(dy0 + drhs*drhs);
-    n0  = 0;
-    n1  = 0;
-    n2  = 0;
-    for (i=0; i < nx; i++) {
-	x[i]   = 0.0;
-	dx[i]  = 0.0;
-	xr1[i] = 0.0;
-	xr2[i] = 0.0;
-	dx1[i] = 0.0;
-	dx2[i] = 0.0;
-    }
+    tol  = 1.e-10;
+    nsol = 0;
+
+    npt = (int)((x1-x0)/dx)+1;
+    y0  = func(fd, x0, &info0);
     for (i=0; i < npt; i++) {
-	r1  = func(ca, x0+dd, &y1, &dy1);
-	y1  = y1-rhs;
-	dy1 = sqrt(dy1 + drhs*drhs);
-
-	if (r0 == 0 && r1 == 0) {
-	    if (n0 < nx && y0*y1 <= 0.0 &&
-	        bisec(0, func, ca, x0, dd, rhs, 0.0,  x+n0) == 0) n0 ++;
-	    if (n1 < nx && (y0+dy0)*(y1+dy1) <= 0.0 &&
-		bisec(1, func, ca, x0, dd, rhs, drhs, xr1+n1) == 0) n1 ++;
-	    if (n2 < nx && (y0-dy0)*(y1-dy1) <= 0.0 &&
-		bisec(2, func, ca, x0, dd, rhs, drhs, xr2+n2) == 0) n2 ++;
+	y1 = func(fd, x0+dx, &info1);
+	if (info0 == 0 && info1 == 0 && nsol < nx && y0*y1 <= 0.0) {
+	    if (bisection(func, fd, x0, y0, dx, tol, x+nsol) == 0) {
+		xdev[nsol] = dfunc(fd, x[nsol]);
+		nsol ++;
+	    }
 	}
-	if (n0 >= nx && n1 >= nx && n2 >= nx) break;
-
-	x0  = x0 + dd;
-	y0  = y1;
-	dy0 = dy1;
-	r0  = r1;
+	x0 = x0 + dx;
+	y0 = y1;
+	info0 = info1;
     }
-
-    if (n0 == n1) {
-	for (i=0; i < n0; i++)
-	    dx1[i] = fabs(xr1[i]-x[i]);
-    }
-    if (n0 == n2) {
-	for (i=0; i < n0; i++)
-	    dx2[i] = fabs(xr2[i]-x[i]);
-    }
-    for (i=0; i < n0; i++)
-	dx[i] = (dx1[i] > dx2[i]) ? dx1[i] : dx2[i];
-
-    return n0;
+    return nsol;
 }
 
 /*-------------------------------------------------------------------------
  *
- *	Determine the best z coordinate.
+ *	Solve z from wx or wy, respectively
  *
  *------------------------------------------------------------------------*/
 
-static int match_z(para_t *p, fitres_t *res)
+static double func_ca(void *data, double x, int *info)
 {
-    int     i, j;
-    double  max_del_z, min_zr, zr, zx, zy, dzx, dzy;
+    calb3D_t      *dd = (calb3D_t *)data;
+    double         w0, y0, tmp;
+    complex double A, B, c, d, zz;
 
-    max_del_z = p->max_del_z;
-    min_zr  = 1.0;
-    res->z  = 0.0;
-    res->dz = 0.0;
-    zx  = 0.0;
-    zy  = 0.0;
-    dzx = 0.0;
-    dzy = 0.0;
+    A   = dd->A[0] + dd->A[1]*I;
+    B   = dd->B[0] + dd->B[1]*I;
+    c   = dd->c[0] + dd->c[1]*I;
+    d   = dd->d[0] + dd->d[1]*I;
+    w0  = dd->w0;
+    y0  = dd->WW;
 
-    for (j=0; j < res->n_zy; j++) {
-    for (i=0; i < res->n_zx; i++) {
-	zr = fabs(1.0 - res->zx[i] / res->zy[j]);
-	if (zr < max_del_z && zr < min_zr) {
-	    min_zr = zr;
-	    zx  = res->zx[i];
-	    zy  = res->zy[j];
-	    dzx = res->dzx[i];
-	    dzy = res->dzy[j];
-	}
-    }}
-    if (min_zr > max_del_z) return -1;
+    zz  = (x-c)/d;
+    tmp = creal(csqrt(1.0 + zz*zz*(1.0 + A*zz + B*zz*zz)));
+    *info = 0;
+    return (w0*tmp-y0);
+}
 
-    res->z  = (zx+zy)/2.0;
-    res->dz = sqrt(dzx*dzx + dzy*dzy)/2.0;
-    return 0;
+static double func_dca(void *data, double x)
+{
+    calb3D_t      *dd = (calb3D_t *)data;
+    double         w0, y0, dy, dz, tmp;
+    complex double A, B, c, d, z1, z2, z3, zz;
+
+    w0  = dd->w0;
+    y0  = dd->WW;
+    dy  = dd->dW;
+    A   = dd->A[0] + dd->A[1]*I;
+    B   = dd->B[0] + dd->B[1]*I;
+    c   = dd->c[0] + dd->c[1]*I;
+    d   = dd->d[0] + dd->d[1]*I;
+
+    zz  = (x-c)/d;
+    z1  = zz/d;
+    z2  = 3.0*A*zz;
+    z3  = 4.0*B*zz*zz;
+    tmp = sqrt(creal(z1*conj(z1) * (4.0 + z2*conj(z2) + z3*conj(z3))));
+    dz  = fabs(2.0*y0*dy) / (w0*w0*tmp);
+    return dz;
+}
+
+int solve_z_w(para_t *p, calb3D_t *fd, double w, double dw, char *v, char *dv)
+{
+    int     n;
+    double  x1, x2, dx, z[4], dz[4];
+
+    x1 = p->z1;
+    x2 = p->z2;
+    dx = p->dz;
+
+    fd->WW = w;
+    fd->dW = dw;
+    n = solver(x1, x2, dx, func_ca, func_dca, fd, 4, z, dz);
+
+    if (n > 0) {
+	sprintf(v,  "%13.6E", z[0]);
+	sprintf(dv, "%10.3E", dz[0]);
+	return 0;
+    }
+    else {
+	sprintf(v,  "%13s", "n/a");
+	sprintf(dv, "%10s", "n/a");
+	return -1;
+    }
 }
 
 /*-------------------------------------------------------------------------
@@ -234,43 +139,97 @@ static int match_z(para_t *p, fitres_t *res)
  *
  *------------------------------------------------------------------------*/
 
-int solve_z_w(para_t *p, fitres_t *res)
+static double func_ca2(void *data, double x, int *info)
 {
-    int       n, i;
-    double    z1, z2, dd, wx, wy, dwx, dwy, z[2], dz[2];
-    calb3D_t *ca[2];
+    calb3D_t     **DD = (calb3D_t **)data;
+    calb3D_t      *DX =  DD[0];
+    calb3D_t      *DY =  DD[1];
+    double         y0, tx, ty;
+    complex double A, B, c, d, zz;
 
-    z1    = p->z1;
-    z2    = p->z2;
-    dd    = p->dz;
-    ca[0] = &(p->cax);
-    ca[1] = &(p->cay);
-    wx    = res->a[3]  * p->nm_px_x;
-    wy    = res->a[4]  * p->nm_px_y;
-    dwx   = res->da[3] * p->nm_px_x;
-    dwy   = res->da[4] * p->nm_px_y;
+    A  = DX->A[0] + DX->A[1]*I;
+    B  = DX->B[0] + DX->B[1]*I;
+    c  = DX->c[0] + DX->c[1]*I;
+    d  = DX->d[0] + DX->d[1]*I;
+    zz = ((complex double)x-c)/d;
+    tx = creal(csqrt(1.0 + zz*zz*(1.0 + A*zz + B*zz*zz)));
 
-    n = solver(z1, z2, dd, func_ca, ca[0], wx, dwx, 2, z, dz);
-    res->n_zx = n;
-    for (i=0; i < n; i++) {
-	res->zx[i]  = z[i];
-	res->dzx[i] = dz[i];
-    }
-    n = solver(z1, z2, dd, func_ca, ca[1], wy, dwy, 2, z, dz);
-    res->n_zy = n;
-    for (i=0; i < n; i++) {
-	res->zy[i]  = z[i];
-	res->dzy[i] = dz[i];
-    }
-    return match_z(p, res);
+    A  = DY->A[0] + DY->A[1]*I;
+    B  = DY->B[0] + DY->B[1]*I;
+    c  = DY->c[0] + DY->c[1]*I;
+    d  = DY->d[0] + DY->d[1]*I;
+    zz = ((complex double)x-c)/d;
+    ty = creal(csqrt(1.0 + zz*zz*(1.0 + A*zz + B*zz*zz)));
 
-/*
-    dwr = wx/wy*sqrt((dwx*dwx)/(wx*wx) + (dwy*dwy)/(wy*wy));
-    n   = solver(z1, z2, dd, func_ca2, ca, wx/wy, dwr, 2, z, dz);
-    res->n_zr = n;
-    for (i=0; i < n; i++) {
-	res->zr[i]  = z[i];
-	res->dzr[i] = dz[i];
+    y0 = DX->WW;
+    *info = 0;
+    return (tx/ty-y0);
+}
+
+static double func_dca2(void *data, double x)
+{
+    calb3D_t     **DD = (calb3D_t **)data;
+    calb3D_t      *DX =  DD[0];
+    calb3D_t      *DY =  DD[1];
+    double         y0, dy, err;
+    complex double A, B, c, d, zz, z1, z2, z3, d1, d2, y1, y2;
+
+    A  = DX->A[0] + DX->A[1]*I;
+    B  = DX->B[0] + DX->B[1]*I;
+    c  = DX->c[0] + DX->c[1]*I;
+    d  = DX->d[0] + DX->d[1]*I;
+    zz = ((complex double)x-c)/d;
+    z1 = zz/d;
+    z2 = 3.0*A*zz;
+    z3 = 4.0*B*zz*zz;
+    d1 = z1*conj(z1) * (4.0 + z2*conj(z2) + z3*conj(z3));
+    y1 = 1.0 + zz*zz*(1.0 + A*zz + B*zz*zz);
+
+    A  = DY->A[0] + DY->A[1]*I;
+    B  = DY->B[0] + DY->B[1]*I;
+    c  = DY->c[0] + DY->c[1]*I;
+    d  = DY->d[0] + DY->d[1]*I;
+    zz = ((complex double)x-c)/d;
+    z1 = zz/d;
+    z2 = 3.0*A*zz;
+    z3 = 4.0*B*zz*zz;
+    d2 = z1*conj(z1) * (4.0 + z2*conj(z2) + z3*conj(z3));
+    y2 = 1.0 + zz*zz*(1.0 + A*zz + B*zz*zz);
+
+    y0  = DX->WW;
+    dy  = DX->dW;
+    err = y0 * 0.5 * sqrt(creal(d1/(y1*conj(y1)) + d2/(y2*conj(y2))));
+    return (dy/err);
+}
+
+int solve_z_wxowy(para_t *p, double *a, double *da, char *v, char *dv)
+{
+    int       n;
+    double    x1, x2, dx, wx, wy, dwx, dwy, z[4], dz[4];
+    calb3D_t *fd[2];
+
+    fd[0] = (calb3D_t *)(&p->cax);
+    fd[1] = (calb3D_t *)(&p->cay);
+    x1    = p->z1;
+    x2    = p->z2;
+    dx    = p->dz;
+    wx    = a[3];
+    wy    = a[4];
+    dwx   = da[3];
+    dwy   = da[4];
+
+    fd[0]->WW = wx/wy;
+    fd[0]->dW = wx/wy * sqrt((dwx*dwx)/(wx*wx) + (dwy*dwy)/(wy*wy));
+    n = solver(x1, x2, dx, func_ca2, func_dca2, fd, 4, z, dz);
+
+    if (n > 0) {
+	sprintf(v,  "%13.6E", z[0]);
+	sprintf(dv, "%10.3E", dz[0]);
+	return 0;
     }
-*/
+    else {
+	sprintf(v,  "%13s", "n/a");
+	sprintf(dv, "%10s", "n/a");
+	return -1;
+    }
 }

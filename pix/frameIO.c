@@ -6,37 +6,179 @@
 
 /*---------------------------------------------------------------------------
  *
- *	Prepare filename format for separated image frame files.
+ *	Distribute frames to each threads or parallel processes
  *
  *--------------------------------------------------------------------------*/
 
-static void FIO_separate(frameIO_t *fio, char *imgfn)
+void frameDistribution(int myid, int nprc, int tot_fID0, int tot_fIDN,
+		       int *fID0, int *fIDN)
 {
-    int        ndig;
-    char      *s1, *s2, *fnp, fnbase[1024], fn[1024];
+    int  nframe, nhandle, ID0, IDN;
 
-    fio->imgf = NULL;
-    strncpy(fnbase, imgfn, 1023);
-    if ((s1 = strstr(fnbase, "XX")) != NULL) {
-	s2 = s1+2;
-	while (*s2 == 'X') s2++;
-	ndig = (int)(s2 - s1);
-	*s1 = '\0';
-	sprintf(fn, "%s%%0%dd%s", fnbase, ndig, s2);
-	fnp = fn;
-    }
-    else
-	fnp = imgfn;
-
-    if ((fio->basefn = strdup(fnp)) == NULL)
-	pstop("!!! FIO_separate: not enough memory.\n");
+    nframe  =  tot_fIDN - tot_fID0 + 1;
+    nhandle =  nframe / nprc;
+    nhandle = (nframe % nprc == 0) ? nhandle : nhandle+1;
+    ID0     =  myid * nhandle + tot_fID0;
+    IDN     = (ID0+nhandle <= tot_fIDN) ? ID0+nhandle : tot_fIDN;
+    *fID0   =  ID0;
+    *fIDN   =  IDN;
 }
 
 /*---------------------------------------------------------------------------
  *
- *	Frame I/O from MATLAB files.
+ *	Frame I/O initialization.
  *
  *--------------------------------------------------------------------------*/
+
+static void FIO_matlab(frameIO_t *fio, char *imgfn)
+{
+    int        ndig;
+    char      *s1, *s2, fn[1024], fmt[1024];
+
+    fio->imgf = NULL;
+    strncpy(fn, imgfn, 1023);
+    if ((s1 = strstr(fn, "XX")) != NULL) {
+	s2 = s1+2;
+	while (*s2 == 'X') s2++;
+	ndig = (int)(s2 - s1);
+	*s1 = '\0';
+	sprintf(fmt, "%s%%0%dd%s", fn, ndig, s2);
+	if ((fio->basefn = strdup(fmt)) == NULL)
+	    pstop("!!! FIO_matlab: not enough memory.\n");
+    }
+    else {
+	fio->basefn = imgfn;
+    }
+}
+
+static void FIO_tiff(frameIO_t *fio, char *imgfn)
+{
+    TIFF *tif;
+
+    fio->basefn = imgfn;
+    TIFFSetWarningHandler(NULL);
+    if ((tif = TIFFOpen(fio->basefn, "r")) == NULL)
+        pstop("!!! frameIO: cannot open tiff file: %s\n", fio->basefn);
+    fio->imgf = (void *)tif;
+}
+
+static void tiff_Nframes(frameIO_t *fio, para_t *p)
+{
+    TIFF *tif;
+    int   idx=1024, sdx=1024, r=0, fID1, fID2;
+
+    fID1 = p->frameID1;
+    fID2 = p->frameID2;
+    if (fID1 < 0)
+	fID1 = 0;
+    if (fID2 < 0) {
+	tif = (TIFF *)(fio->imgf);
+	while (TIFFSetDirectory(tif, (tdir_t)idx) == 1) idx += sdx;
+	while (sdx > 1) {
+	    sdx /= 2;
+	    idx  = (r == 0) ? idx-sdx : idx+sdx;
+	    r = TIFFSetDirectory(tif, (tdir_t)idx);
+	}
+	if (r == 0)
+	    idx = idx-sdx;
+	else if (TIFFSetDirectory(tif, (tdir_t)(idx+sdx)) == 1)
+	    idx = idx+sdx;
+	fID2 = idx;
+	printf("%d: Total available frames: %d\n", p->myid, fID2-fID1+1);
+	fflush(stdout);
+	TIFFClose(tif);
+	fio->imgf = NULL;
+    }
+    frameDistribution(p->myid, p->nprc, fID1, fID2, &(p->frameID1),
+		      &(p->frameID2));
+}
+
+static void FIO_raw(frameIO_t *fio, char *imgfn)
+{
+    FILE *f;
+
+    if ((f = fopen(imgfn, "rt")) == NULL)
+	pstop("!!! FIO_raw: cannot open file: %s.\n", imgfn);
+    fio->basefn = imgfn;
+    fio->imgf   = (void *)f;
+}
+
+void frameIO_init(para_t *p)
+{
+    frameIO_t *fio;
+    int  ntotal;
+
+    if ((fio = malloc(sizeof(frameIO_t))) == NULL)
+	pstop("!!! frameIO_init: not enough memory.\n");
+    fio->type = p->imgfmt;
+
+    switch (p->imgfmt) {
+    case 0:
+//	FIO_matlab(fio, p->imgfn);
+	break;
+
+    case 1:
+	FIO_tiff(fio, p->imgfn);
+	tiff_Nframes(fio, p);
+	break;
+
+    case 2:
+//	FIO_raw(fio, p->imgfn);
+	p->frameID1 = 0;
+	p->frameID2 = 0;
+	break;
+
+    default:
+	pstop("!!! frameIO: unknown image file format: %d\n", p->imgfmt);
+    }
+    ntotal = p->frameID2 - p->frameID1 + 1;
+    if ((p->fsts = calloc(ntotal, sizeof(framests_t))) == NULL)
+	pstop("!!! frameIO_init: not enough memory for frame sts.\n");
+
+    ntotal = (p->frame_x2 - p->frame_x1 + 1)*(p->frame_y2 - p->frame_y1 + 1);
+    if ((p->psum = calloc(ntotal, sizeof(int))) == NULL)
+	pstop("!!! frameIO_init: not enough memory for frame sum.\n");
+}
+
+frameIO_t *frameIO_ReOpen(para_t *p)
+{
+    frameIO_t *fio;
+
+    if ((fio = malloc(sizeof(frameIO_t))) == NULL)
+	pstop("!!! frameIO_ReOpen: not enough memory.\n");
+    fio->type = p->imgfmt;
+
+    switch (p->imgfmt) {
+    case 0:
+	FIO_matlab(fio, p->imgfn);
+	break;
+
+    case 1:
+	FIO_tiff(fio, p->imgfn);
+	break;
+
+    case 2:
+	FIO_raw(fio, p->imgfn);
+	break;
+    }
+    return fio;
+}
+
+void frameIO_Close(para_t *p, frameIO_t *fio)
+{
+    switch (p->imgfmt) {
+    case 1:
+	TIFFClose((TIFF *)(fio->imgf));
+	break;
+    }
+    free(fio);
+}
+
+/*----------------------------------------------------------------------------
+ *
+ *	Frame reading.
+ *
+ *---------------------------------------------------------------------------*/
 
 static frameloc_t *FR_matlab(para_t *p, frameIO_t *fio, int idx)
 {
@@ -46,61 +188,10 @@ static frameloc_t *FR_matlab(para_t *p, frameIO_t *fio, int idx)
 
     sprintf(fn, fio->basefn, idx);
     matf = matRead(fn);
-    fm   = frameCreate(p, idx, &(matf->mx), 's');
+    fm   = frameCreate(p, idx, 0, &(matf->mx), 's');
     matFree(matf);
 
     return fm;
-}
-
-static void MAT_info(para_t *p, frameIO_t *fio)
-{
-
-
-}
-
-/*---------------------------------------------------------------------------
- *
- *	Frame I/O from TIFF files.
- *
- *--------------------------------------------------------------------------*/
-
-static void FIO_tiff(frameIO_t *fio, char *imgfn)
-{
-    TIFF *tif;
-
-    TIFFSetWarningHandler(NULL);
-    if ((tif = TIFFOpen(fio->basefn, "r")) == NULL)
-        pstop("!!! frameIO: cannot open tiff file: %s\n", fio->basefn);
-    fio->imgf = (void *)tif;
-    if ((fio->basefn = strdup(imgfn)) == NULL)
-	pstop("!!! FIO_tiff: not enough memory.\n");
-}
-
-static void tiff_info(para_t *p, frameIO_t *fio)
-{
-    TIFF *tif;
-    int   idx=1024, sdx=1024, r=0, w, h;
-
-    tif = (TIFF *)(fio->imgf);
-    while (TIFFSetDirectory(tif, (tdir_t)idx) == 1) idx += sdx;
-    while (sdx > 1) {
-	sdx /= 2;
-	idx  = (r == 0) ? idx-sdx : idx+sdx;
-	r = TIFFSetDirectory(tif, (tdir_t)idx);
-    }
-    if (r == 0)
-	idx = idx-sdx;
-    else if (TIFFSetDirectory(tif, (tdir_t)(idx+sdx)) == 1)
-	idx = idx+sdx;
-
-    if (TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &w) != 1)
-	pstop("!!! TIFF: cannot get tag: TIFFTAG_IMAGEWIDTH\n");
-    if (TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &h) != 1)
-	pstop("!!! TIFF: cannot get tag: TIFFTAG_IMAGELENGTH\n");
-
-    p->tot_frames = idx;
-    p->img_W = w;
-    p->img_H = h;
 }
 
 static frameloc_t *FR_tiff(para_t *p, frameIO_t *fio, int idx)
@@ -122,41 +213,36 @@ static frameloc_t *FR_tiff(para_t *p, frameIO_t *fio, int idx)
     dp      = data;
     if (data == NULL)
 	pstop("!!! TIFF: not enough memory.\n");
-
-    w = p->img_W;
-    h = p->img_H;
+    if (TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &w) != 1)
+        pstop("!!! TIFF: cannot get tag: TIFFTAG_IMAGEWIDTH\n");
+    if (TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &h) != 1)
+        pstop("!!! TIFF: cannot get tag: TIFFTAG_IMAGELENGTH\n");
     if (TIFFGetField(tif, TIFFTAG_STRIPBYTECOUNTS, &bc) != 1)
         pstop("!!! TIFF: cannot get tag: TIFFTAG_STRIPBYTECOUNTS\n");
-
     for (i=0; i < n_strip; i++) {
         if (TIFFReadRawStrip(tif, i, dp, bc[i]) != bc[i])
 	    pstop("!!! TIFF: cannot read completed strip.\n");
-        dp += bc[i];
+        dp += s_strip;
     }
     mx.dim_x = w;
     mx.dim_y = h;
     mx.data  = (void *)data;
-    fm = frameCreate(p, idx, &mx, 's');
+    fm = frameCreate(p, idx, 1, &mx, 's');
     _TIFFfree(data);
-
     return fm;
 }
 
-/*---------------------------------------------------------------------------
- *
- *	Frame I/O from RAW data files.
- *
- *--------------------------------------------------------------------------*/
-
-static void raw_info(para_t *p, frameIO_t *fio)
+static frameloc_t *FR_raw(para_t *p, frameIO_t *fio, int idx)
 {
-    FILE  *f;
-    char   buf[4096];
-    int    xmax=0, ymax=0, x, y, II;
+    frameloc_t *fm = NULL;
+    matmx_t     mx;
+    FILE       *f  = (FILE *)(fio->imgf);
+    short      *data;
+    char        buf[4096];
+    int         xmax=0, ymax=0, i, x, y, II;
 
-    sprintf(buf, fio->basefn, p->frameID1);
-    if ((f = fopen(buf, "rt")) == NULL)
-	pstop("!!! raw_info: cannot open file: %s.\n", buf);
+    if (f == NULL) return NULL;
+
     fgets(buf, 4096, f);
     fgets(buf, 4096, f);
     while (fgets(buf, 4096, f) != NULL) {
@@ -166,158 +252,26 @@ static void raw_info(para_t *p, frameIO_t *fio)
     }
     xmax ++;
     ymax ++;
-    fclose(f);
-
-    p->tot_frames = 1;
-    p->frameID1   = 0;
-    p->frameID2   = 0;
-    p->img_W      = xmax;
-    p->img_H      = ymax;
-}
-
-static frameloc_t *FR_raw(para_t *p, frameIO_t *fio, int idx)
-{
-    frameloc_t *fm = NULL;
-    matmx_t     mx;
-    FILE       *f;
-    short      *data;
-    char        buf[4096];
-    int         w, h, i, x, y, II;
-
-    sprintf(buf, fio->basefn, idx);
-    if ((f = fopen(buf, "rt")) == NULL)
-	pstop("!!! FR_raw: cannot open file: %s.\n", buf);
-
-    w = p->img_W;
-    h = p->img_H;
-    if ((data = malloc(w*h*sizeof(short))) == NULL)
+    if ((data = malloc(xmax*ymax*sizeof(short))) == NULL)
 	pstop("!!! FR_raw: not enough memory.\n");
 
     fseek(f, 0, SEEK_SET);
     fgets(buf, 4096, f);
     fgets(buf, 4096, f);
-    for (i=0; i < w*h; i++) {
+    for (i=0; i < xmax*ymax; i++) {
 	fgets(buf, 4096, f);
 	sscanf(buf, "%d %d %d", &x, &y, &II);
-	data[y+x*h] = (short)II;
+	data[y+x*ymax] = (short)II;
     }
     fclose(f);
+    fio->imgf = NULL;
 
-    mx.dim_x = w;
-    mx.dim_y = h;
+    mx.dim_x = xmax;
+    mx.dim_y = ymax;
     mx.data  = (void *)data;
-    fm = frameCreate(p, idx, &mx, 's');
+    fm = frameCreate(p, idx, 1, &mx, 's');
 
     return fm;
-}
-
-
-/*----------------------------------------------------------------------------
- *
- *	Frame I/O driver routings
- *
- *---------------------------------------------------------------------------*/
-
-frameIO_t *frameIO_Open(para_t *p)
-{
-    frameIO_t *fio;
-
-    if ((fio = malloc(sizeof(frameIO_t))) == NULL)
-	pstop("!!! frameIO_ReOpen: not enough memory.\n");
-    if ((fio->basefn = strdup(p->imgfn)) == NULL)
-	pstop("!!! frameIO_ReOpen: not enough memory.\n");
-    fio->type = p->imgfmt;
-
-    switch (p->imgfmt) {
-    case 0:
-	FIO_separate(fio, p->imgfn);
-	break;
-
-    case 1:
-	FIO_tiff(fio, p->imgfn);
-	break;
-
-    case 2:
-	FIO_separate(fio, p->imgfn);
-	break;
-
-    default:
-	pstop("!!! frameIO_Open: unknown image file format: %d\n", p->imgfmt);
-    }
-    return fio;
-}
-
-void frameIO_Close(para_t *p, frameIO_t *fio)
-{
-    if (fio->imgf) {
-	switch (p->imgfmt) {
-	case 1:
-	    TIFFClose((TIFF *)(fio->imgf));
-	    break;
-	}
-    }
-    fio->imgf = NULL;
-    free(fio->basefn);
-    free(fio);
-}
-
-void frameIO_init(para_t *p)
-{
-    frameIO_t *fio;
-    int  ntotal;
-//
-//  Open the image frames data file to obtain the frame information.
-//
-    fio = frameIO_Open(p);
-    switch (p->imgfmt) {
-    case 0:
-	MAT_info(p, fio);
-	break;
-
-    case 1:
-	tiff_info(p, fio);
-	break;
-
-    case 2:
-	raw_info(p, fio);
-	break;
-    }
-    frameIO_Close(p, fio);
-//
-//  Initialize the frame parameters.
-//
-    if (p->frameID1 < 0) p->frameID1=0;
-    if (p->frameID2 < 0) p->frameID2=p->tot_frames-1;
-    if (p->frameID1 >= p->tot_frames || p->frameID2 >= p->tot_frames)
-	pstop("!!! frameIO: frameID out of range, max=%d\n", p->tot_frames-1);
-    if (p->frame_x1 < 0 || p->frame_x2 <= p->frame_x1) {
-	p->frame_x1 = 0;
-	p->frame_x2 = p->img_W-1;
-    }
-    if (p->frame_y1 < 0 || p->frame_y2 <= p->frame_y1) {
-	p->frame_y1 = 0;
-	p->frame_y2 = p->img_H-1;
-    }
-    p->max_x   = p->frame_x2 - p->frame_x1;
-    p->max_y   = p->frame_y2 - p->frame_y1;
-    p->max_dx  = p->max_dx  / p->nm_px_x;
-    p->max_dy  = p->max_dy  / p->nm_px_y;
-    p->max_dwx = p->max_dwx / p->nm_px_x;
-    p->max_dwy = p->max_dwy / p->nm_px_y;
-
-    ntotal = p->frameID2 - p->frameID1 + 1;
-    if ((p->fsts = calloc(ntotal, sizeof(framests_t))) == NULL)
-	pstop("!!! frameIO_init: not enough memory for frame sts.\n");
-
-    ntotal = (p->frame_x2 - p->frame_x1 + 1)*(p->frame_y2 - p->frame_y1 + 1);
-    if ((p->psum = calloc(ntotal, sizeof(int))) == NULL)
-	pstop("!!! frameIO_init: not enough memory for frame sum.\n");
-
-    printf("Total frames:  %d\n", p->tot_frames);
-    printf("Image size:    %d x %d\n", p->img_W, p->img_H);
-    printf("Image ROI:  x=(%d,%d), y=(%d,%d)\n",
-	    p->frame_x1, p->frame_x2, p->frame_y1, p->frame_y2);
-    fflush(stdout);
 }
 
 frameloc_t *frameIO(para_t *p, frameIO_t *fio, int idx)

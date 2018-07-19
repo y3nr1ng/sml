@@ -4,11 +4,14 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <sys/time.h>
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
 #include "pix.h"
 
 /*-------------------------------------------------------------------------
  *
- *	Stop the code with error messages.
+ *	Stop MPI with error messages.
  *
  *------------------------------------------------------------------------*/
 
@@ -18,7 +21,11 @@ void pstop(char *fmt, ...)
     va_start(ap, fmt);
     vprintf(fmt, ap);
     fflush(stdout);
+#ifdef USE_MPI
+    MPI_Abort(MPI_COMM_WORLD, 1);
+#else
     exit(1);
+#endif
 }
 
 /*-------------------------------------------------------------------------
@@ -128,100 +135,120 @@ void inp_getSTR(char *buf, char **pstr, int nline)
  *
  *------------------------------------------------------------------------*/
 
-static int get_val_err(char *buf, double *val, double *err)
-{
-    char *s;
-
-    *val = 0.0;
-    *err = 0.0;
-    s    = buf;
-    while (*s != '\0' && *s != '=') s++;
-    while (*s != '\0' && *s != '-' && ! isdigit((int)(*s))) s++;
-
-    if (sscanf(s, "%lf", val) == 1) {
-	if ((s = strstr(buf, "+- ")) != NULL)
-	    sscanf(s+2, "%lf", err);
-	return 1;
-    }
-    return 0;
-}
-
 static void read_cabf(para_t *p, char *cabf)
 {
     FILE   *f;
-    int     i, flag[10];
-    char    buf[1024];
-    double  val, err;
+    int     i, r, flag[9];
+    char   *s, buf[1024];
+    double  val1, val2;
 
-    for (i=0; i < 10; i++) flag[i]=0;
+    for (i=0; i < 9; i++) flag[i]=0;
 
     if ((f = fopen(cabf, "rt")) == NULL)
 	pstop("!!! read_cabf: cannot open file: %s\n", cabf);
     while (fgets(buf, 1023, f) != NULL) {
+	s = buf;
+	while (*s != '\0' && *s != '=') s++;
+	while (*s != '\0' && *s != '-' && ! isdigit((int)(*s))) s++;
+
 	if (strncmp(buf, "w0x", 3) == 0 &&
-	    get_val_err(buf, &val, &err) == 1) {
-	    p->cax.w0  = val;
-	    p->cax.dw0 = err;
+	    sscanf(s, "%lf", &val1) == 1) {
+	    p->cax.w0 = val1;
+	    if ((s = strstr(buf, "+- ")) != NULL)
+		sscanf(s+2, "%lf", &(p->cax.dw0));
 	    flag[0] = 1;
 	}
 	else if (strncmp(buf, "w0y", 3) == 0 &&
-		 get_val_err(buf, &val, &err) == 1) {
-	    p->cay.w0  = val;
-	    p->cay.dw0 = err;
-	    flag[1] = 1;
+	    sscanf(s, "%lf", &val1) == 1) {
+	    p->cay.w0 = val1;
+	    if ((s = strstr(buf, "+- ")) != NULL)
+		sscanf(s+2, "%lf", &(p->cay.dw0));
+	    flag[0] = 1;
 	}
-	else if (strncmp(buf, "WxA", 3) == 0 &&
-		 get_val_err(buf, &val, &err) == 1) {
-	    p->cax.A  = val;
-	    p->cax.dA = err;
-	    flag[2] = 1;
+	else if (strncmp(buf, "WxA", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cax.A[0] = val1;
+		p->cax.A[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cax.dA));
+		flag[1] = 1;
+	    }
 	}
-	else if (strncmp(buf, "WxB", 3) == 0 &&
-		 get_val_err(buf, &val, &err) == 1) {
-            p->cax.B  = val;
-            p->cax.dB = err;
-            flag[3] = 1;
-        }
-	else if (strncmp(buf, "Wxc", 3) == 0 &&
-		 get_val_err(buf, &val, &err) == 1) {
-	    p->cax.c  = val;
-	    p->cax.dc = err;
-	    flag[4] = 1;
+	else if (strncmp(buf, "WxB", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cax.B[0] = val1;
+		p->cax.B[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cax.dB));
+		flag[2] = 1;
+	    }
 	}
-	else if (strncmp(buf, "Wxd", 3) == 0 &&
-		 get_val_err(buf, &val, &err) == 1) {
-	    p->cax.d  = val;
-	    p->cax.dd = err;
-	    flag[5] = 1;
+	else if (strncmp(buf, "Wxc", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cax.c[0] = val1;
+		p->cax.c[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cax.dc));
+	        flag[3] = 1;
+	    }
 	}
-	else if (strncmp(buf, "WyA", 3) == 0 &&
-		 get_val_err(buf, &val, &err) == 1) {
-	    p->cay.A  = val;
-	    p->cay.dA = err;
-	    flag[6] = 1;
+	else if (strncmp(buf, "Wxd", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cax.d[0] = val1;
+		p->cax.d[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cax.dd));
+		flag[4] = 1;
+	    }
 	}
-	else if (strncmp(buf, "WyB", 3) == 0 &&
-		 get_val_err(buf, &val, &err) == 1) {
-	    p->cay.B  = val;
-	    p->cay.dB = err;
-	    flag[7] = 1;
+	else if (strncmp(buf, "WyA", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cay.A[0] = val1;
+		p->cay.A[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cay.dA));
+		flag[5] = 1;
+	    }
 	}
-	else if (strncmp(buf, "Wyc", 3) == 0 &&
-	 	 get_val_err(buf, &val, &err) == 1) {
-	    p->cay.c  = val;
-	    p->cay.dc = err;
-	    flag[8] = 1;
+	else if (strncmp(buf, "WyB", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cay.B[0] = val1;
+		p->cay.B[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cay.dB));
+		flag[6] = 1;
+	    }
 	}
-	else if (strncmp(buf, "Wyd", 3) == 0 &&
-	 	 get_val_err(buf, &val, &err) == 1) {
-	    p->cay.d  = val;
-	    p->cay.dd = err;
-	    flag[9] = 1;
+	else if (strncmp(buf, "Wyc", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cay.c[0] = val1;
+		p->cay.c[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cay.dc));
+		flag[7] = 1;
+	    }
+	}
+	else if (strncmp(buf, "Wyd", 3) == 0) {
+	    r = sscanf(s, "%lf %lf", &val1, &val2);
+	    if (r >= 1) {
+		p->cay.d[0] = val1;
+		p->cay.d[1] = (r == 2) ? val2 : 0.0;
+		if ((s = strstr(buf, "+- ")) != NULL)
+		    sscanf(s+2, "%lf", &(p->cay.dd));
+		flag[8] = 1;
+	    }
 	}
     }
     fclose(f);
 
-    for (i=0; i < 10; i++) {
+    for (i=0; i < 9; i++) {
 	if (flag[i] == 0)
 	    pstop("!!! read_cabf: reading value error.\n");
     }
@@ -344,24 +371,28 @@ static void inputs(int argc, char **argv, para_t *p)
 	case 21: inp_getDBL(buf, &(p->max_dI_I), 1, nline);
 		 break;
 
-	case 22: inp_getDBL(buf, &(p->max_del_z), 1, nline);
-		 break;
-
-	case 23: inp_getDBL(buf, darg, 3, nline);
+	case 22: inp_getDBL(buf, darg, 3, nline);
 		 p->z1 = darg[0];
 		 p->z2 = darg[1];
 		 p->dz = darg[2];
 		 break;
 
-	case 24: inp_getINT(buf, &(p->verb), 1, nline);
+	case 23: inp_getINT(buf, &(p->verb), 1, nline);
 		 break;
 	}
     }
     fclose(f);
-    if (nlab != 24) pstop("!!! Invalid input file.\n");
+    if (nlab != 23) pstop("!!! Invalid input file.\n");
 
     p->threshold1 = p->threshold1 / p->i_photon;
     p->threshold2 = p->threshold2 / p->i_photon;
+    p->max_x   = p->frame_x2 - p->frame_x1;
+    p->max_y   = p->frame_y2 - p->frame_y1;
+    p->max_dx  = p->max_dx  / p->nm_px_x;
+    p->max_dy  = p->max_dy  / p->nm_px_y;
+    p->max_dwx = p->max_dwx / p->nm_px_x;
+    p->max_dwy = p->max_dwy / p->nm_px_y;
+
     if (p->mode > 0)
 	read_cabf(p, cabf);
 }
@@ -377,27 +408,40 @@ int main(int argc, char **argv)
     para_t  p;
 
     memset(&p, 0, sizeof(para_t));
+#ifdef USE_MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &(p.myid));
+    MPI_Comm_size(MPI_COMM_WORLD, &(p.nprc));
+#else
+    p.myid = 0;
+    p.nprc = 1;
+#endif
     inputs(argc, argv, &p);
-    get_realtime();
+    if (p.myid == 0) get_realtime();
 
     frameIO_init(&p);
     if (p.frameID2 > p.frameID1) {
-	spot_dframe(&p);
+#ifdef USE_OMP
+#pragma omp parallel
+#endif
+	dframe_spot(&p);
 	printf("\n");
 	qsort(p.sp1, p.n_sp1, sizeof(sp_t *), spot_cmp);
 	qsort(p.sp2, p.n_sp2, sizeof(sp_t *), spot_cmp);
 	out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
     }
-    else {
-	spot_sframe(&p);
-	out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
-    }
+    else
+	sframe_spot(&p);
 
     if (p.rmode == 1)
 	spot_output_img(&p);
     else
 	spot_fitting(&p);
 
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Finalize();
+#endif
     return 0;
 }
 

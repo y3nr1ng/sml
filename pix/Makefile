@@ -19,16 +19,11 @@
 #---------------------------------------------------------------------------
 #	For Linux without MPI
 #
-# CC     := icc
-# MPICC  := icc
-# CFLAGS := -O2 -DUSE_OMP -openmp -g -Wall -wd981
-# TIFF   := -ltiff
-# LAPACK := -L/opt/intel/Compiler/11.1/069/mkl/lib/em64t -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5
-
-CC     := gcc
-MPICC  := gcc
-CFLAGS := -O2 -DUSE_OMP -fopenmp -g -Wall
-TIFF   := -ltiff -ljpeg
+CC     := icc
+MPICC  := icc
+CFLAGS := -O2 -DUSE_OMP -openmp -Wall -wd981
+TIFF   := -ltiff
+LAPACK := -L/opt/intel/Compiler/11.1/069/mkl/lib/em64t -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5
 
 #---------------------------------------------------------------------------
 #	For Linux with MPI
@@ -41,7 +36,7 @@ TIFF   := -ltiff -ljpeg
 
 BIN := pix
 SRC := main.c frame.c spot.c spotfit.c output.c \
-       frameIO.c matIO.c nlinfit.c reginal.c matrix.c solver.c dsysv.c
+       frameIO.c matIO.c nlinfit.c reginal.c matrix.c solver.c
 OBJ := $(SRC:.c=.o)
 LIB := $(TIFF) $(LAPACK) -lz -lm
 
@@ -68,4 +63,3 @@ matIO.o:    matIO.c    pix.h
 reginal.o:  reginal.c  pix.h
 matrix.o:   matrix.c   pix.h
 nlinfit.o:  nlinfit.c  pix.h
-dsysv.o:    dsysv.c    pix.h
