@@ -127,6 +127,7 @@ static frameloc_t *FR_tiff(para_t *p, frameIO_t *fio, int idx)
     h = p->img_H;
     if (TIFFGetField(tif, TIFFTAG_STRIPBYTECOUNTS, &bc) != 1)
         pstop("!!! TIFF: cannot get tag: TIFFTAG_STRIPBYTECOUNTS\n");
+
     for (i=0; i < n_strip; i++) {
         if (TIFFReadRawStrip(tif, i, dp, bc[i]) != bc[i])
 	    pstop("!!! TIFF: cannot read completed strip.\n");
@@ -312,13 +313,11 @@ void frameIO_init(para_t *p)
     if ((p->psum = calloc(ntotal, sizeof(int))) == NULL)
 	pstop("!!! frameIO_init: not enough memory for frame sum.\n");
 
-    if (p->myid == 0) {
-	printf("Total frames:  %d\n", p->tot_frames);
-	printf("Image size:    %d x %d\n", p->img_W, p->img_H);
-	printf("Image ROI:  x=(%d,%d), y=(%d,%d)\n",
-		p->frame_x1, p->frame_x2, p->frame_y1, p->frame_y2);
-        fflush(stdout);
-    }
+    printf("Total frames:  %d\n", p->tot_frames);
+    printf("Image size:    %d x %d\n", p->img_W, p->img_H);
+    printf("Image ROI:  x=(%d,%d), y=(%d,%d)\n",
+	    p->frame_x1, p->frame_x2, p->frame_y1, p->frame_y2);
+    fflush(stdout);
 }
 
 frameloc_t *frameIO(para_t *p, frameIO_t *fio, int idx)

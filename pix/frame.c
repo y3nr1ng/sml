@@ -75,7 +75,7 @@ void frameDelete(frameloc_t *fm)
  *
  *------------------------------------------------------------------------*/
 
-static void push_spot(parath_t *p, int mode, int fID, int x, int y, short *simg)
+static void push_spot(para_t *p, int mode, int fID, int x, int y, short *simg)
 {
     int    m_sp, n_sp, nfsep, i, j, ii, dx, dy, df, imglen;
     sp_t **sp;
@@ -195,7 +195,7 @@ static int SpotCheck(para_t *p, short *intensity)
  *
  *------------------------------------------------------------------------*/
 
-void frameSpots(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1)
+void frameSpots(para_t *p, frameloc_t *fm0, frameloc_t *fm1)
 {
     int     sdim[4], sdim_x, sdim_y, rng_x, rng_y;
     int     dim_x, dim_y, x, y, xx, r;
@@ -240,9 +240,9 @@ void frameSpots(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1)
 	if (frame1)
 	    mx_rsub_s(dim_x, dim_y, sdim, frame1, frame0);
 	if (r == 0)
-	    push_spot(pp, 0, fm0->ID, x, y, spot);
+	    push_spot(p, 0, fm0->ID, x, y, spot);
 	else if (p->outfnH != NULL)
-	    push_spot(pp, 1, fm0->ID, x, y, spot);
+	    push_spot(p, 1, fm0->ID, x, y, spot);
     }}
 
     free(spot);
@@ -319,7 +319,7 @@ static int check_mark(int x0, int y0, int wx, int wy, int dim_x, int dim_y,
     return 0;
 }
 
-void frameSpot2(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1)
+void frameSpot2(para_t *p, frameloc_t *fm0, frameloc_t *fm1)
 {
     int        sdim[4], sdim_x, sdim_y, rng_x, rng_y;
     int        dim_x, dim_y, nsp, x, y, i;
@@ -366,9 +366,9 @@ void frameSpot2(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1)
 	if (frame1)
 	    mx_rsub_s(dim_x, dim_y, sdim, frame1, frame0);
 	if ((double)II <= p->threshold2)
-	    push_spot(pp, 0, fm0->ID, x, y, spot);
+	    push_spot(p, 0, fm0->ID, x, y, spot);
 	else if (p->outfnH != NULL)
-	    push_spot(pp, 1, fm0->ID, x, y, spot);
+	    push_spot(p, 1, fm0->ID, x, y, spot);
     }
     free(spot);
     free(mark);

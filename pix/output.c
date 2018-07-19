@@ -55,10 +55,7 @@ FILE *out_fit_init(para_t *p, char *outfn)
 
     if (outfn == NULL) return NULL;
 
-    if (p->nprc > 1)
-	sprintf(buf, "%s.%04d", outfn, p->myid);
-    else
-	sprintf(buf, "%s.txt",  outfn);
+    sprintf(buf, "%s.txt",  outfn);
     if ((f = fopen(buf, "wt")) == NULL)
         pstop("!!! inputs: cannot open output file (pixel): %s\n", buf);
 
@@ -180,10 +177,7 @@ void out_framests(para_t *p)
 
     if (p->outfnF == NULL) return;
 
-    if (p->nprc > 1)
-	sprintf(fn, "%s.%04d", p->outfnF, p->myid);
-    else
-	sprintf(fn, "%s.txt",  p->outfnF);
+    sprintf(fn, "%s.txt",  p->outfnF);
     if ((f = fopen(fn, "wt")) == NULL)
 	pstop("!!! out_framests: cannot open file: %s\n", fn);
     fprintf(f, "%-8s  %8s  %8s\n", "frame", "n_event", "density");
@@ -216,10 +210,7 @@ void out_framesum(para_t *p)
 
     dim_x = p->frame_x2 - p->frame_x1 + 1;
     dim_y = p->frame_y2 - p->frame_y1 + 1;
-    if (p->nprc > 1)
-	sprintf(fn, "%s.%04d", p->outfnS, p->myid);
-    else
-	sprintf(fn, "%s.txt",  p->outfnS);
+    sprintf(fn, "%s.txt",  p->outfnS);
     if ((f = fopen(fn, "wt")) == NULL)
         pstop("!!! out_imgtxt: cannot open file: %s\n", fn);
     fprintf(f, "%4s  %4s  %8s\n", "x", "y", "pixel");

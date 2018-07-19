@@ -89,34 +89,11 @@ typedef struct {
 
 /*-------------------------------------------------------------------------
  *
- *  Code parameters for each thread.
- *
- *------------------------------------------------------------------------*/
-
-typedef struct {
-    int         myid, nprc;
-
-    int         m_sp1;		// current buffer size of sp (normal spots)
-    int         n_sp1;		// current number of sp (normal spots)
-    sp_t      **sp1;		// candidate spots (normal spots)
-    int         m_sp2;		// current buffer size of sp (high intensity)
-    int         n_sp2;		// current number of sp (high intensity)
-    sp_t      **sp2;		// candidate spots (for high intensity)
-
-    int         x_find_pixels;	// x range for finding pixels.
-    int         y_find_pixels;	// y range for finding pixels.
-    int         nfsep;		// max separation of frames of each particle
-} parath_t;
-
-/*-------------------------------------------------------------------------
- *
  *  Code parameters.
  *
  *------------------------------------------------------------------------*/
 
 typedef struct {
-    int         myid;		// MPI: my process id.
-    int         nprc;		// MPI: n_procs.
     int         imgfmt;		// image file format.
     char       *imgfn;		// image filename.
     char       *outfn;		// output filename (for normal spots).
@@ -155,10 +132,13 @@ typedef struct {
     int         tot_frames;	// total number of frames.
     int         img_W, img_H;   // image width, image height
 
+    int         m_sp1;		// current buffer size of sp (normal spots)
     int         n_sp1;		// current number of sp (for normal spots)
     sp_t      **sp1;		// candidate spots (for normal spots)
+    int         m_sp2;		// current buffer size of sp (high intensity)
     int         n_sp2;		// current number of sp (for high intensity)
     sp_t      **sp2;		// candidate spots (for high intensity)
+
     framests_t *fsts;		// for frame statistics.
     int        *psum;		// sum over all pixels.
     double      max_x;		// width of the image (nm).
@@ -172,8 +152,8 @@ typedef struct {
  *
  *------------------------------------------------------------------------*/
 
-void dframe_spot(para_t *p);
-void sframe_spot(para_t *p);
+void spot_dframe(para_t *p);
+void spot_sframe(para_t *p);
 void spot_fitting(para_t *p);
 void spot_output_img(para_t *p);
 int  spot_cmp(const void *a, const void *b);
@@ -187,8 +167,8 @@ void        matFree(matfile_t *m);
 
 frameloc_t *frameCreate(para_t *p, int idx, matmx_t *mx, char type);
 void  frameDelete(frameloc_t *fm);
-void  frameSpots(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1);
-void  frameSpot2(para_t *p, parath_t *pp, frameloc_t *fm0, frameloc_t *fm1);
+void  frameSpots(para_t *p, frameloc_t *fm0, frameloc_t *fm1);
+void  frameSpot2(para_t *p, frameloc_t *fm0, frameloc_t *fm1);
 int   SpotFit(para_t *p, double *x_fit, double *y_fit, sp_t *sp);
 int   solve_z_w(para_t *p, calb3D_t *fd, double w, double dw,
 		char *v, char *dv);

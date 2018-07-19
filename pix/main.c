@@ -4,14 +4,11 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <sys/time.h>
-#ifdef USE_MPI
-#include <mpi.h>
-#endif
 #include "pix.h"
 
 /*-------------------------------------------------------------------------
  *
- *	Stop MPI with error messages.
+ *	Stop the code with error messages.
  *
  *------------------------------------------------------------------------*/
 
@@ -21,11 +18,7 @@ void pstop(char *fmt, ...)
     va_start(ap, fmt);
     vprintf(fmt, ap);
     fflush(stdout);
-#ifdef USE_MPI
-    MPI_Abort(MPI_COMM_WORLD, 1);
-#else
     exit(1);
-#endif
 }
 
 /*-------------------------------------------------------------------------
@@ -401,27 +394,19 @@ int main(int argc, char **argv)
     para_t  p;
 
     memset(&p, 0, sizeof(para_t));
-#ifdef USE_MPI
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &(p.myid));
-    MPI_Comm_size(MPI_COMM_WORLD, &(p.nprc));
-#else
-    p.myid = 0;
-    p.nprc = 1;
-#endif
     inputs(argc, argv, &p);
-    if (p.myid == 0) get_realtime();
+    get_realtime();
 
     frameIO_init(&p);
     if (p.frameID2 > p.frameID1) {
-	dframe_spot(&p);
+	spot_dframe(&p);
 	printf("\n");
 	qsort(p.sp1, p.n_sp1, sizeof(sp_t *), spot_cmp);
 	qsort(p.sp2, p.n_sp2, sizeof(sp_t *), spot_cmp);
 	out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
     }
     else {
-	sframe_spot(&p);
+	spot_sframe(&p);
 	out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
     }
 
@@ -430,10 +415,6 @@ int main(int argc, char **argv)
     else
 	spot_fitting(&p);
 
-#ifdef USE_MPI
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Finalize();
-#endif
     return 0;
 }
 
