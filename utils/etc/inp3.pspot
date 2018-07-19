@@ -1,0 +1,12 @@
+2		! data format: 0:spot, 1:spotmesh, 2:pixel
+INDEX_Fsum.txt	! input data filename
+INDEX_Fsts.txt	! frame statistics filename
+INDEX_smesh.txt ! output spot meshed filename
+EVDENSITY0	! max. event density for starting frame
+0		! image size: 0:full, 1:scaled
+512 512		! image size  (pixel)
+IMGX IMGY	! image range (nm)
+NHISTINTVL	! n_intvls for histogram for xcor
+20		! grid size of the mesh (nm)
+1.5		! gamma of the gray scale image
+NULL

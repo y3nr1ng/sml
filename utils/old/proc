@@ -1,0 +1,182 @@
+#!/bin/bash
+#
+#   Process the uploaded image, and store the result into the repository.
+#
+#----------------------------------------------------------------------------
+
+HDIR=/home/PeiLinChen/bioimg
+input='input'
+jsub='jsub'
+sleeps=10
+
+source /opt/intel/Compiler/11.1/069/bin/iccvars.sh   intel64
+source /opt/intel/Compiler/11.1/069/bin/ifortvars.sh intel64
+source /opt/intel/impi/4.0.0.025/bin64/mpivars.sh
+
+#----------------------------------------------------------------------------
+#   Check the image source file.
+#
+check_imgf() {
+    local ll l ext imgf cabf basef
+    imgf=''
+    cabf=''
+    ext=$1
+    [ ! -z "$ext" ] && ext="_$ext"
+
+    ll=`cd $HDIR/upload$ext; /bin/ls *.tif* 2> /dev/null`
+    for l in $ll; do
+	lsof $HDIR/upload$ext/$l > /dev/null
+	[ $? = 1 ] && imgf="$l" && break
+    done
+    if [ ! -z "$imgf" ]; then
+	if [ ! -z "$ext" ]; then
+	    basef=`echo $imgf | sed 's|\.tif*||'`
+	    if [ -f $HDIR/upload$ext/$basef.cab ]; then
+		lsof $HDIR/upload$ext/$basef.cab > /dev/null
+		if [ $? = 1 ]; then
+		    cabf="$basef.cab"
+		    echo "$imgf,$cabf"
+		    return
+		fi
+	    fi
+	else
+	    echo "$imgf"
+	    return
+	fi
+    fi
+    echo NULL
+}
+
+#----------------------------------------------------------------------------
+#   Move the image source file to the repository.
+#
+move_imgf() {
+    local imgf cabf time dir ll l n ext
+    imgf=`echo $1 | cut -d , -f 1`
+    cabf=`echo $1 | cut -d , -f 2`
+    ext=$2
+    [ ! -z "$ext" ] && ext="_$ext"
+
+    time=`date +%Y-%m-%d`
+    y=`echo $time | cut -d - -f 1`
+    m=`echo $time | cut -d - -f 2`
+    d=`echo $time | cut -d - -f 3`
+    dir="$HDIR/$y/$y-$m/$y-$m-$d/image$ext"
+    mkdir -p $dir
+
+    ll=`cd $dir; /bin/ls -r *.tif* 2> /dev/null`
+    n=0
+    for l in $ll; do
+	n=`echo $ll | cut -d - -f 1`
+	n=`expr $n + 1`
+	break
+    done
+    l=`printf "%04d-$imgf" $n`
+    mv $HDIR/upload$ext/$imgf $dir/$l
+    if [ ! -z "$ext" ]; then
+	ll=`printf "%04d-$cabf" $n`
+	mv $HDIR/upload$ext/$cabf $dir/$ll
+	echo "$dir/$l,$ll"
+    else
+        echo "$dir/$l"
+    fi
+}
+
+#----------------------------------------------------------------------------
+#   Compute the result for the image file.
+#
+compute_imgf() {
+    local d imgf cabf n ext inpfile
+    imgf=`echo $1 | cut -d , -f 1`
+    cabf=`echo $1 | cut -d , -f 2`
+    d=`dirname $imgf`
+    d=`dirname $d`
+    imgf=`basename $imgf`
+    ext=$2
+    [ ! -z "$ext" ] && ext="_$ext"
+
+    n=`echo $imgf | cut -d - -f 1`
+    mkdir -p $d/work$ext $d/output$ext
+    if [ ! -z $ext ]; then
+	inpfile="$d/work$ext/$n-${input}_3D"
+	sed "s|IMAGEFILE|$d/image$ext/$imgf|;s|CABFILE|$d/image$ext/$cabf|" \
+		$HDIR/bin/${input}_3D > $inpfile
+    else
+	inpfile="$d/work$ext/$n-${input}_2D"
+	sed "s|IMAGEFILE|$d/image$ext/$imgf|" \
+		$HDIR/bin/${input}_2D > $inpfile
+    fi
+
+    cd $d/output$ext
+    mpdboot
+    mpiexec -n 4 $HDIR/bin/pix $inpfile 2> /dev/null
+    mpdallexit
+    $HDIR/bin/mergeout $n.txt ${n}p.txt
+}
+
+#----------------------------------------------------------------------------
+#   Compute the result for the image file.
+#
+submit_job() {
+    local d imgf cabf files n time code r ext
+    imgf=`echo $1 | cut -d , -f 1`
+    cabf=`echo $1 | cut -d , -f 2`
+    d=`dirname $imgf`
+    d=`dirname $d`
+    imgf=`basename $imgf`
+    ext=$2
+    [ ! -z "$ext" ] && ext="_$ext"
+
+    n=`echo $imgf | cut -d - -f 1`
+    mkdir -p $d/work$ext $d/output$ext
+    if [ ! -z $ext ]; then
+	sed "s|IMAGEFILE|$imgf|;s|CABFILE|$cabf|" \
+		$HDIR/bin/${input}_3D > $d/work$ext/$n-${input}_3D
+	files="$d/image$ext/$imgf $d/image$ext/$cabf $d/work$ext/$n-${input}_3D"
+    else
+	sed "s|IMAGEFILE|$imgf|" \
+		$HDIR/bin/${input}_2D > $d/work$ext/$n-${input}_2D
+	files="$d/image$ext/$imgf $d/work$ext/$n-${input}_2D"
+    fi
+    time=`date "+[%Y-%m-%d %H:%M:%S]"`
+    code=`basename $d`
+    code="$code-$n"
+    r=0
+
+    ssh -n thhsieh@ibmyc "mkdir -p /work1/thhsieh/bioimg/$code"
+    r=`expr $? + $r`
+    [ $r = 0 ] && rsync -a $files thhsieh@ibmyc:/work1/thhsieh/bioimg/$code/
+    r=`expr $? + $r`
+    [ $r = 0 ] && ssh -n thhsieh@ibmyc "cd /work1/thhsieh/bioimg/$code; ../bin/$jsub $code > /dev/null 2>&1 &"
+    r=`expr $? + $r`
+
+    if [ $r = 0 ]; then
+	echo "$time submit job: $code" >> $HDIR/bin/log
+    else
+	echo "$time !!! error submit job: $code" >> $HDIR/bin/log
+    fi
+}
+
+#----------------------------------------------------------------------------
+#   Main program.
+#
+umask 022
+while [ 1 ]; do
+    f1=`check_imgf`
+    f2=`check_imgf 3D`
+    if [ "$f1" = 'NULL' ] && [ "$f2" = 'NULL' ]; then
+	sleep $sleeps
+	continue
+    fi
+
+    if [ "$f1" != 'NULL' ]; then
+	f=`move_imgf $f1`
+	submit_job $f
+#       compute_imgf $f
+    fi
+    if [ "$f2" != 'NULL' ]; then
+	f=`move_imgf $f2 3D`
+	submit_job $f 3D
+#       compute_imgf $f 3D
+    fi
+done

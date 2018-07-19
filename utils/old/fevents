@@ -1,0 +1,41 @@
+#!/usr/bin/perl
+use strict;
+
+#--------------------------------------------------------------------------
+#	Plot the data
+#
+sub plot {
+    my ($fn, $mode) = @_;
+    my ($FF, $fhandle, $basef);
+
+    ($basef = $fn) =~ s/\..*//;
+    $fhandle = ($mode == 0) ? "| gnuplot" : "> $basef.cmd";
+    open($FF, "$fhandle") || die("readdata: cannot plot file: $fn\n");
+    printf($FF "set term jpeg\n");
+    printf($FF "set output \"$basef.jpg\"\n");
+    printf($FF "set xlabel \"frame\"\n");
+    printf($FF "set ylabel \"number of events\"\n");
+    printf($FF "plot \"$fn\" using 1:2 every ::2 with lines title \"\"\n");
+    close($FF);
+}
+
+#--------------------------------------------------------------------------
+#	Main program
+#
+my ($fn, $mode);
+
+if ($#ARGV == -1) {
+    printf("Usage: $0 [-v] <event_data>\n");
+    printf("   -v: output the gnuplot command file.\n");
+    exit(0);
+}
+
+if ("$ARGV[0]" eq '-v') {
+    $mode = 1;
+    $fn   = $ARGV[1];
+}
+else {
+    $mode = 0;
+    $fn   = $ARGV[0];
+}
+plot($fn, $mode);

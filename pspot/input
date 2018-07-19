@@ -1,0 +1,12 @@
+0		! data format: 0:spot, 1:spotmesh, 2:pixel
+spot.txt	! input data filename
+Fsts.txt	! frame statistics filename
+spotmesh.txt	! output spot meshed filename
+0.3		! max. event density for starting frame
+0		! image size: 0:full, 1:scaled
+512 512		! image size  (pixel)
+20000 20000	! image range (nm)
+100		! n_intvls for histogram for xcor
+20		! grid size of the mesh (nm)
+0.5		! gamma of the gray scale image
+/home/thhsieh/work/RCAS/image/src/pspot/font72.glf

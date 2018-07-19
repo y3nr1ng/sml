@@ -1,0 +1,16 @@
+spool_1.tif		! image filename
+50  50			! frame left-bottom corner (x,y) (pixel)
+229 229			! frame right-top   corner (x,y) (pixel)
+7   7			! x_find_pixels, y_find_pixels
+500 4500		! threshold1, threshold2 (in # of photons)
+-1 -1			! frameID1, frameID2
+3			! max. frame separation for identical particles
+109.1703		! nm per pixels
+1.0			! factor to convert pixel intensity to # of photons
+100 100 100		! max_dx, max_dy, max_dw
+10			! min_SN (Signal/Noise ratio)
+0.5			! max ratio of d(Intensity)/Intensity
+0.3			! max. event density for starting frame
+2000			! max. distances of spots to form a cluster (nm)
+20			! # of rectangles to draw
+100			! n_intvls for histogram for xcor

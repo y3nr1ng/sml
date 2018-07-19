@@ -1,0 +1,155 @@
+#!/usr/bin/perl
+use strict;
+use POSIX;
+
+#-------------------------------------------------------------------------
+#	Check whether DOS or UNIX text format
+#
+sub chk_text {
+    my ($fn) = @_;
+    my ($FF);
+
+    open($FF, "$fn") || die("chk_text: cannot open file: $fn\n");
+    $_ = <$FF>;
+    close($FF);
+
+    return (/\cM\cJ$/) ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------
+#	Generate the input files.
+#
+sub generate_inp {
+    my ($inp, $fin) = @_;
+    my ($F1, $F2, $fout);
+
+    ($fout = $fin) =~ s/.*\///g;
+    open($F1, "$fin")    || die("generate_inp: cannot open file: $fin\n");
+    open($F2, "> $fout") || die("generate_inp: cannot open file: $fout\n");
+    while (defined($_ = <$F1>)) {
+	s/IMAGEFN/$inp->{imagefn}/;
+	s/INDEX/$inp->{idx}/;
+	s/FMX1/$inp->{fmx1}/;
+	s/FMX2/$inp->{fmx2}/;
+	s/FMY1/$inp->{fmy1}/;
+	s/FMY2/$inp->{fmy2}/;
+	s/XFPX/$inp->{xfpx}/;
+	s/YFPX/$inp->{yfpx}/;
+	s/THSH1/$inp->{thsh1}/;
+	s/THSH2/$inp->{thsh2}/;
+	s/FRM1/$inp->{frm1}/;
+	s/FRM2/$inp->{frm2}/;
+	s/FMSEP/$inp->{fmsep}/;
+	s/NMPX/$inp->{nmpx}/;
+	s/IPHOTON/$inp->{iphoton}/;
+	s/MAX_DX/$inp->{max_dx}/;
+	s/MAX_DY/$inp->{max_dy}/;
+	s/MAX_DW/$inp->{max_dw}/;
+	s/MIN_SN/$inp->{min_SN}/;
+	s/MAX_DI_I/$inp->{max_dI_I}/;
+	s/IMGX/$inp->{imgx}/;
+	s/IMGY/$inp->{imgy}/;
+	s/EVDENSITY0/$inp->{evdensity0}/;
+	s/CLSTSIZE/$inp->{clstsize}/;
+	s/NCLSTDRAW/$inp->{nclstdraw}/;
+	s/NHISTINTVL/$inp->{nhistintvl}/;
+	syswrite($F2, $_);
+    }
+    close($F1);
+    close($F2);
+}
+
+#-------------------------------------------------------------------------
+#	Read the common input file
+#
+sub readline_arg {
+    my ($FF, $fmt) = @_;
+    my (@arr);
+
+    $_ = <$FF>;
+    chop();
+    ($fmt == 1) && chop();
+    s/[ \t]*!.*//;
+    @arr = split(/[ \t]+/, $_);
+
+    return [ @arr ];
+}
+
+sub common_inps {
+    my ($fn) = @_;
+    my ($FF, %inp, $arr, $iW, $iH, $fmt, @arrfn);
+
+    $fmt = chk_text("$fn");
+    open($FF, "$fn") || die("common_inps: cannot open file: $fn\n");
+    $arr = readline_arg($FF, $fmt);
+    $inp{imagefn} = $arr->[0];
+    @arrfn = split(/[-_]/, $inp{imagefn});
+    $inp{idx} = (($arrfn[0] =~ /^[0-9]+$/)) ? $arrfn[0] : '0000';
+
+    $arr = readline_arg($FF, $fmt);
+    $inp{fmx1} = $arr->[0];
+    $inp{fmy1} = $arr->[1];
+    $arr = readline_arg($FF, $fmt);
+    $inp{fmx2} = $arr->[0];
+    $inp{fmy2} = $arr->[1];
+    $arr = readline_arg($FF, $fmt);
+    $inp{xfpx} = $arr->[0];
+    $inp{yfpx} = $arr->[1];
+    $arr = readline_arg($FF, $fmt);
+    $inp{thsh1} = $arr->[0];
+    $inp{thsh2} = $arr->[1];
+    $arr = readline_arg($FF, $fmt);
+    $inp{frm1}  = $arr->[0];
+    $inp{frm2}  = $arr->[1];
+    $arr = readline_arg($FF, $fmt);
+    $inp{fmsep} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{nmpx} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{iphoton} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{max_dx} = $arr->[0];
+    $inp{max_dy} = $arr->[1];
+    $inp{max_dw} = $arr->[2];
+    $arr = readline_arg($FF, $fmt);
+    $inp{min_SN} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{max_dI_I} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{evdensity0} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{clstsize} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{nclstdraw} = $arr->[0];
+    $arr = readline_arg($FF, $fmt);
+    $inp{nhistintvl} = $arr->[0];
+    close($FF);
+
+    $iW = $inp{fmx2} - $inp{fmx1} + 1;
+    $iH = $inp{fmy2} - $inp{fmy1} + 1;
+    $inp{imgx} = ceil($iW * $inp{nmpx});
+    $inp{imgy} = ceil($iH * $inp{nmpx});
+
+    return { %inp };
+}
+
+#-------------------------------------------------------------------------
+#	Main program
+#
+my ($inpf) = @ARGV;
+my ($inp, $root);
+
+if ($#ARGV == -1) {
+    printf("Usage: $0 <common_inp>\n");
+    exit(0);
+}
+$root = $ENV{BIOIMG_ROOT};
+(length("$root") == 0) && die("Environment BIOIMG_ROOT not available.\n");
+
+$inp = common_inps($inpf);
+generate_inp($inp, "$root/etc/inp/inp.pix");
+generate_inp($inp, "$root/etc/inp/inp.cl");
+generate_inp($inp, "$root/etc/inp/inp1.pspot");
+generate_inp($inp, "$root/etc/inp/inp2.pspot");
+generate_inp($inp, "$root/etc/inp/inp3.pspot");
+

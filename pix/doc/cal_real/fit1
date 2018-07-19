@@ -1,0 +1,16 @@
+set term post
+set output "a.eps"
+
+f(x) = wx*( 1 + ((x-cx)/dx)**2 + Ax*((x-cx)/dx)**3 + Bx*((x-cx)/dx)**4 )
+g(x) = wy*( 1 + ((x-cy)/dy)**2 + Ay*((x-cy)/dy)**3 + By*((x-cy)/dy)**4 )
+
+# wx = 13.2278
+wy = 13.2278
+fit f(x) "z_cal_rawdata.txt" using 1:($2)*($2) via wx,Ax,Bx,cx,dx
+fit [-400:400] g(x) "z_cal_rawdata.txt" using 1:($3)*($3) via wy,Ay,By,cy,dy
+
+plot [-700:700][0:2500] \
+     "z_cal_rawdata.txt" using 1:2 with points lc 1 title "wx", \
+     "z_cal_rawdata.txt" using 1:3 with points lc 3 title "wy", \
+     sqrt(f(x)), sqrt(g(x))
+

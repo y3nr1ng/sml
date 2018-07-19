@@ -1,0 +1,24 @@
+1			! image file format: 0:mat, 1:tiff
+IMAGEFN			! image filename.
+NULL			! calibration parameter filename.
+INDEX_spot		! output data filename for normal spots.
+INDEX_spotH		! output data filename for high intensity spots.
+INDEX_Fsts		! output data filename for frame event statistics.
+INDEX_Fsum		! output data filename for frame sums.
+INDEX_candidate		! output data filename for candidate events (pixels).
+0			! mode: 0:2D, 1:3D
+FRM1 FRM2		! frameID1, frameID2.
+FMX1 FMX2 FMY1 FMY2	! frame_x1, frame_x2, frame_y1, frame_y2.
+XFPX YFPX		! x_find_pixels, y_find_pixels.
+THSH1 THSH2		! threshold1, threshold2 (in # of photons)
+FMSEP			! max. frame separation for identical particles
+NMPX			! nm per pixels
+IPHOTON			! factor to convert pixel intensity to # of photons
+0			! rmode: 0:spot fitting, 1:output spot
+1			! alg: 0:regional max, 1:max intensity
+MAX_DX MAX_DY MAX_DW	! max_dx, max_dy, max_dw
+MIN_SN			! min_SN (Signal/Noise ratio)
+MAX_DI_I		! max ratio of d(Intensity)/Intensity
+-1000 1000 1		! Solve z-coord.: [z1,z2],dz
+-900 500		! Range of z for wx(z)/wy(z) solver
+0			! verbose image output

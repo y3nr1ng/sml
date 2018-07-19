@@ -1,0 +1,158 @@
+#!/usr/bin/perl
+use strict;
+
+#--------------------------------------------------------------------------
+#	Get the last index number
+#
+sub lastno {
+    my ($fn) = @_;
+    my ($s, @arr);
+
+    $s   = `tail -1 $fn`;
+    @arr = split(/ +/, $s);
+    return $arr[0]+1;
+}
+
+#--------------------------------------------------------------------------
+#	Append the data file with counting index
+#
+sub appendf {
+    my ($fn, $n, $outf) = @_;
+    my ($FF, $FO, $a, $s);
+
+    open($FF, $fn) || die("!!! appendf: cannot open file: $fn.\n");
+    open($FO, ">> $outf") || die("!!! appendf: cannot append file: $outf.\n");
+    $_ = <$FF>;
+    $_ = <$FF>;
+    while (defined($_ = <$FF>)) {
+	if (! /^ExecTime:/) {
+	    ($s = $_) =~ s/^[^ ]+ //;
+	    printf($FO "%08d %s", $n, $s);
+	    $n ++;
+	}
+	else {
+	    printf($FO "$_");
+	}
+    }
+    close($FF);
+    close($FO);
+
+    return $n;
+}
+
+#--------------------------------------------------------------------------
+#	Sum of the data
+#
+sub sum_data {
+    my ($fn, $x, $y, $data) = @_;
+    my ($FF, $i, @arr);
+
+    open($FF, "$fn") || die("sum_data: cannot open file: $fn\n");
+    $_ = <$FF>;
+    $_ = <$FF>;
+    $i = 0;
+    while (defined($_ = <$FF>)) {
+	chop();
+	@arr = split(/ +/, $_);
+	$x->[$i] = $arr[0];
+	$y->[$i] = $arr[1];
+	$data->[$i] = $data->[$i] + $arr[2];
+	$i ++;
+    }
+    close($FF);
+    unlink($fn);
+
+    return $i;
+}
+
+sub sum_output {
+    my ($fn, $ndata, $x, $y, $data) = @_;
+    my ($FF, $i);
+
+    open($FF, "> $fn") || die("!!! sum_output: cannot open file: $fn\n");
+    printf($FF "   x     y     pixel\n");
+    printf($FF "--------------------\n");
+    for ($i=0; $i < $ndata; $i++) {
+	printf($FF "%04d  %04d %9d\n", $x->[$i], $y->[$i], $data->[$i]);
+    }
+    close($FF);
+}
+
+#--------------------------------------------------------------------------
+#	Merge data file
+#
+#	$mode:  0:  simple combine
+#		1:  simple combine (reverse order)
+#		2:  combine with recount the indices
+#		3:  sum over
+#
+sub merge_data {
+    my ($fbase, $mode, $outf) = @_;
+    my ($DIR, @fs, $i, $n, $ndata, @x, @y, @data);
+
+    $#x = -1;
+    $#y = -1;
+    $#data = -1;
+    (length("$outf") == 0) && return;
+
+    opendir($DIR, '.') || die("merge_data: cannot open current directory.\n");
+    @fs = sort grep { -f "$_" && /$fbase\.[0-9]+/ } readdir($DIR);
+    closedir($DIR);
+    ($#fs == -1) && return;
+    unlink("$outf");
+
+    $n=0;
+    for ($i=$#fs; $i >= 0; $i--) {
+	if ($mode == 0) {
+	    if ( ! -f $outf) {
+		rename("$fs[$i]", "$outf");
+	    }
+	    else {
+		system("awk '{if(NR > 2) print}' $fs[$i] >> $outf");
+		unlink("$fs[$i]");
+	    }
+	}
+	elsif ($mode == 1) {
+	    if ( ! -f $outf) {
+		rename("$fs[$#fs-$i]", "$outf");
+	    }
+	    else {
+		system("awk '{if(NR > 2) print}' $fs[$#fs-$i] >> $outf");
+		unlink("$fs[$#fs-$i]");
+	    }
+	}
+	elsif ($mode == 2) {
+	    if (! -f $outf) {
+		$n = lastno("$fs[$i]");
+		rename("$fs[$i]", "$outf");
+	    }
+	    else {
+		$n = appendf("$fs[$i]", $n, "$outf");
+		unlink("$fs[$i]");
+	    }
+	}
+	else {
+	    $ndata = sum_data($fs[$i], \@x, \@y, \@data);
+	}
+    }
+    ($mode == 3) && sum_output($outf, $ndata, \@x, \@y, \@data);
+}
+
+#--------------------------------------------------------------------------
+#	Main program
+#
+#	$mode:  0:  simple combine
+#		1:  simple combine (reverse order)
+#		2:  combine with recount the indices
+#		3:  sum over
+#
+my ($predx) = @ARGV;
+if ($#ARGV == -1) {
+    printf("Usage: $0 <prefix>\n");
+    exit(0);
+}
+merge_data('spot',      2, "${predx}_spot.txt");
+merge_data('spotH',     2, "${predx}_spotH.txt");
+merge_data('candidate', 0, "${predx}_candidate.txt");
+merge_data('Fsts',      1, "${predx}_Fsts.txt");
+merge_data('Fsum',      3, "${predx}_Fsum.txt");

@@ -1,0 +1,9 @@
+testimg			! output image filename (for both JPG and RAW)
+12337			! random number seed
+200 200			! iH, iW: image size (pixel)
+0.5 0.9			! Signal intensity range: [0.0-1.0]
+0.0 0.1			! Noise intensity range:  [0.0-1.0]
+0.5 3.0			! Spot width range (pixel)
+20			! number of spots
+9			! spot size (pixels)
+10			! mesh size of each pixel to generate spots

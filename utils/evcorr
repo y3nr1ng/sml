@@ -1,0 +1,125 @@
+#!/usr/bin/perl
+use strict;
+
+#--------------------------------------------------------------------------
+#	Read the rectangle input files
+#
+sub readrec {
+    my ($FF, $id) = @_;
+    my (%data, $key, $val, @nev, $i);
+
+    $data{ID} = $id;
+    while (defined($_ = <$FF>)) {
+	chop();
+	(! /^REC_/) && last;
+
+	($key, $val) = split(':', $_);
+	$key =~ s/^REC_//;
+	$val =~ s/^[ ]*//;
+	$data{$key} = $val;
+    }
+    ($key, $val) = split(/ +/, $_);
+    $nev[0] = $val;
+    for ($i=1; $i < $data{NH}; $i++) {
+	$_ = <$FF>;
+	chop();
+	($key, $val) = split(/ +/, $_);
+	$nev[$i] = $val;
+    }
+    $data{NEV} = [ @nev ];
+
+    return { %data };
+}
+
+sub readinfn {
+    my ($fn) = @_;
+    my ($FF, $i, $n_rec, $id, @rec);
+
+    open($FF, "$fn") || die("!!! readinfn: cannot open file: $fn\n");
+    $_ = <$FF>;
+    chop();
+    ($n_rec = $_) =~ s/[^:]+:[ \t]*//;
+
+    for ($i=0; $i < $n_rec; $i++) {
+	while (defined($_ = <$FF>)) {
+	    (! /^REC_ID:/) && next;
+	    chop();
+
+	    ($id = $_) =~ s/[^:]+:[ \t]*//;
+	    $rec[$i] = readrec($FF, $id);
+	    last;
+	}
+    }
+    close($FF);
+
+    return ($n_rec, [ @rec ]);
+}
+
+#--------------------------------------------------------------------------
+#	Plot the histogram of the autocorrelation.
+#
+sub plot_rec {
+    my ($FF, $basefn, $rec) = @_;
+    my ($i, $x1, $x2, $y1, $y2, $dr);
+
+    ($x1,$y1) = split(/ +/, $rec->{C1});
+    ($x2,$y2) = split(/ +/, $rec->{C2});
+    $dr = $rec->{DR};
+
+    printf($FF "set title \"Event autocorrelation: ID=%d, window=[(%.0f,%.0f), (%.0f,%.0f)]\"\n", $rec->{ID}, $x1, $y1, $x2, $y2);
+    printf($FF "set xtics ( \"%.0f\" %d", $dr*20, 20);
+    for ($i=2; $i <= 5; $i++) {
+	$x1 = $dr * $i * 20.0;
+	printf($FF ", \"%.0f\" %d", $x1, $i*20);
+    }
+    printf($FF " )\n");
+    printf($FF "plot [0:] \"-\" using 1 title \"np=%d\"\n", $rec->{NP});
+    for ($i=0; $i < $rec->{NH}; $i++) {
+	printf($FF "%d\n", $rec->{NEV}->[$i]);
+    }
+    printf($FF "e\n\n");
+}
+
+sub plot {
+    my ($basefn, $mode, $n_rec, $rec) = @_;
+    my ($fhandle, $FF, $i);
+
+    $fhandle = ($mode == 0) ? "| gnuplot" : "> $basefn.cmd";
+    open($FF, $fhandle) || die("!!! plot: cannot plot: $basefn");
+    printf($FF "set term pdf\n");
+    printf($FF "set output \"$basefn.pdf\"\n");
+    printf($FF "set xlabel \"R(nm)\"\n");
+    printf($FF "set ylabel \"Number of events\"\n");
+    printf($FF "set style fill solid 0.5 border 1\n");
+    printf($FF "set style data histogram\n");
+    printf($FF "set style histogram cluster gap 0\n\n");
+
+    for ($i=0; $i < $n_rec; $i++) {
+	plot_rec($FF, $basefn, $rec->[$i]);
+    }
+    close($FF);
+}
+
+#--------------------------------------------------------------------------
+#	Main program
+#
+my ($infn, $mode);
+my ($basefn, $n_rec, $rec);
+
+if ($#ARGV == -1) {
+    printf("Usage: $0 [-v] <xcor.dat>\n");
+    printf("   -v: output the gnuplot command file.\n");
+    exit(0);
+}
+if ("$ARGV[0]" eq '-v') {
+    $mode = 1;
+    $infn = $ARGV[1];
+}
+else {
+    $mode = 0;
+    $infn = $ARGV[0];
+}
+($basefn = $infn) =~ s/\.[^\.]*//;
+
+($n_rec, $rec) = readinfn($infn);
+plot($basefn, $mode, $n_rec, $rec);

@@ -1,0 +1,24 @@
+1			! image file format: 0:mat, 1:tiff, 2:raw
+data/image.tif		! image filename.
+data/image.cab		! calibration parameter filename.
+spot			! output data filename for normal spots.
+spotH			! output data filename for high intensity spots.
+Fsts			! output data filename for frame event statistics.
+Fsum			! output data filename for frame sums.
+candidate		! output data filename for candidate events (pixels).
+0			! mode: 0:2D, 1:3D
+1 10			! frameID1, frameID2.
+50 229 50 229		! frame_x1, frame_x2, frame_y1, frame_y2.
+5 5			! x_find_pixels, y_find_pixels.
+50 450			! threshold1, threshold2 (in # of photons)
+3			! max. frame separation for identical particles
+140.8451 134.2282	! nm per pixels in (x,y) directions
+0.1			! factor to convert pixel intensity to # of photons
+0			! rmode: 0:spot fitting, 1:fit & output spot
+1			! alg: 0:regional max, 1:max intensity
+100 100 100		! max_dx, max_dy, max_dw (nm)
+10			! min_SN (Signal/Noise ratio)
+0.5			! max ratio of d(Intensity)/Intensity
+0.3			! max of z variation: |1 - z(wx)/z(wy)|
+-1000 1000 1		! Solve z-coord.: [z1,z2],dz
+0			! verbose message

@@ -1,0 +1,128 @@
+\documentclass[12pt]{article}
+\addtolength{\textwidth}{20mm}
+\addtolength{\hoffset}{-10mm}
+
+\def\bea{\begin{eqnarray}}
+\def\eea{\end{eqnarray}}
+\def\Eq#1{Eq(\ref{#1})}
+\def\Re{\mathrm{Re}}
+
+\title{Error estimate of $z$-coordinate in 3D Single Molecule Localization}
+\author{Tung-Han Hsieh}
+
+
+\begin{document}
+\maketitle
+
+The relation between $z$-coordinate of the molecules and the width in
+$x$, $y$ direction is through the calibration curve (the defocusing curve):
+\bea\label{calb}
+w_{x,y}(z) = w_0\Re\left(\sqrt{ 1 +
+	\left(\frac{z-c_{x,y}}{d_{x,y}}\right)^2 +
+	A_{x,y}\left(\frac{z-c_{x,y}}{d_{x,y}}\right)^3 +
+	B_{x,y}\left(\frac{z-c_{x,y}}{d_{x,y}}\right)^4 }\right)
+\eea
+where $w_0$, $A_{x,y}$, $B_{x,y}$, $c_{x,y}$, and $d_{x,y}$ are calibration
+parameters determined from experiments. In general these parameters are complex
+numbers (except the parameter $w_0$). The $z$-coordinate of the molecules
+can be obtained via solving $z$ in \Eq{calb} with respect to the
+fitted width $w_x$ and $w_y$ from experimental measurements.
+
+There are two ways to determine the $z$ coordinate. The first one is to
+solve $z_x$ and $z_y$ for the input of $w_x$ and $w_y$, and then take the
+average of $z_x$ and $z_y$. The second one is to solve $w_x/w_y$ for $z$.
+We describe the error estimate of $z$ through the input of $w_x$, $w_y$
+and their errorbars $\delta w_x$, $\delta w_y$ for both methods.
+
+\section{Method 1: average of $z_x$ and $z_y$}
+
+For convenience, we first consider that all calibration parameters are
+real numbers. We define the variable $u_{x,y}$ as:
+\bea\label{u(z)}
+u(z) = \left(\frac{z-c}{d}\right)^2 +
+	A\left(\frac{z-c}{d}\right)^3 +
+	B\left(\frac{z-c}{d}\right)^4
+\eea
+Here we have suppressed the labels $x$ and $y$ for simplicity, which will
+be put back when necessary. Then \Eq{calb} can be rewritten as
+\bea
+w(z) = w_0 \sqrt{1+u(z)}
+\eea
+Suppose that there is no errorbars in the calibration parameters.
+The only errorbar is $\delta w$, which comes from the fitting
+for $w(z)$. Then the relation between $\delta w$ and $\delta z$ is
+\bea\label{dw}
+\delta w = \frac{w_0^2}{2 |w(z)|} \delta u
+\eea
+where
+\bea\label{du}
+\delta u = \sqrt{ \left[2\Bigl(\frac{z-c}{d}\Bigr)\right]^2 +
+		  \left[3A\Bigl(\frac{z-c}{d}\Bigr)^2\right]^2 +
+		  \left[4B\Bigl(\frac{z-c}{d}\Bigr)^3\right]^2 }\delta z
+\eea
+Putting \Eq{dw} and \Eq{du} together one can solve $\delta z$ from $\delta w$:
+\bea\label{dz-dw}
+\delta z = \frac{2 |w(z)|}{w_0^2} \delta w \left\{
+	\left[2\Bigl(\frac{z-c}{d}\Bigr)\right]^2 +
+	\left[3A\Bigl(\frac{z-c}{d}\Bigr)^2\right]^2 +
+	\left[4B\Bigl(\frac{z-c}{d}\Bigr)^3\right]^2 \right\}^{-1/2}
+\eea
+Therefore, for the input of calibration parameters, $w_{x,y}(z)$,
+and $\delta w_{x,y}$, we can obtain $\delta z_{x,y}$. Finally, errorbar
+$\delta z_a$ of the average $z_x$ and $z_y$ is
+\bea\label{z_a}
+\delta z_a = \frac{1}{2} \sqrt{(\delta z_x)^2 + (\delta z_y)^2}
+\eea
+Now for in general the parameters $A$, $B$, $c$, and $d$ may be complex
+numbers, we modify \Eq{dz-dw} as
+\bea\label{dz-dw-abs}
+\delta z = \frac{2 |w(z)|}{w_0^2} \delta w \left\{
+	\left|2\Bigl(\frac{z-c}{d}\Bigr)\right|^2 +
+	\left|3A\Bigl(\frac{z-c}{d}\Bigr)^2\right|^2 +
+	\left|4B\Bigl(\frac{z-c}{d}\Bigr)^3\right|^2 \right\}^{-1/2}
+\eea
+That is, take the absolute square of the three terms inside the overall
+square root, so that the resulting $\delta z_{x,y}$ is real and positive
+quantity. Then \Eq{z_a} can be used to obtain the final errorbar of $z$
+coordinate.
+
+\section{Method 2: solving for $w_x(z)/w_y(z)$}
+
+For $v(z) = w_x(z)/w_y(z)$, its errorbar $\delta v$ is
+\bea\label{dv1}
+\delta v = v\sqrt{ \left(\frac{dw_x}{w_x}\right)^2 +
+		   \left(\frac{dw_y}{w_y}\right)^2 }
+\eea
+Here we understood that $v$, $w_x$, and $w_y$ are all functions of $z$.
+On the other hand, $v(z)$ can also be written in the defocusing relation
+(suppose that all calibration parameters are real for this moment):
+\bea
+v(z) = \frac{\sqrt{1+u_x(z)}}{\sqrt{1+u_y(z)}}
+\eea
+where $u_x(z)$ and $u_y(z)$ are defined in \Eq{u(z)}. Thus we can
+obtain the errorbar of $v$ as
+\bea\label{dv2}
+\delta v = \frac{1}{2} v \sqrt{
+	\left(\frac{\delta u_x}{1+u_x}\right)^2 +
+	\left(\frac{\delta u_y}{1+u_y}\right)^2 }
+\eea
+where $\delta u_x$ and $\delta u_y$ are defined as \Eq{du}. Therefore
+\bea
+\left(\frac{\delta v}{v}\right)^2 &=& \frac{(\delta z)^2}{4}\Biggl\{
+	\left|\frac{1}{1+u_x}\right|^2\left[
+	4\left|\frac{z-c_x}{d_x}\right|^2 +
+	9|A_x|^2\left|\frac{z-c_x}{d_x}\right|^4 +
+	16 |B_x|^2\left|\frac{z-c_x}{d_x}\right|^6 \right]
+\nonumber\\ && \hspace{8mm} +
+	\left|\frac{1}{1+u_y}\right|^2\left[
+	4\left|\frac{z-c_y}{d_y}\right|^2 +
+	9|A_y|^2\left|\frac{z-c_y}{d_y}\right|^4 +
+	16 |B_y|^2\left|\frac{z-c_y}{d_y}\right|^6 \right]
+	\Biggr\}
+\nonumber\\ &=&
+	\left(\frac{dw_x}{w_x}\right)^2 + \left(\frac{dw_y}{w_y}\right)^2
+\eea
+So the estimated errorbar of $z$ coordinate $\delta z$ can be calculated.
+
+
+\end{document}
