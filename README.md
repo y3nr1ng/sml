@@ -1,16 +1,16 @@
 # Single molecule localization
 
-- pix:
-  - Description:
-    This is the main code for single molecule localization. It reads a set
-    of frames of input images (in TIFF format), using differential frame
-    algorithm to find all the spots, and generate the output files. This
-    code is parallelized with OpenMP and MPI. With the fitting parameters
-    of the calibration curve, this code can also do 3D single molecule
-    localization.
+## pix
+### Description
+This is the main code for single molecule localization. It reads a set
+of frames of input images (in TIFF format), using differential frame
+algorithm to find all the spots, and generate the output files. This
+code is parallelized with OpenMP and MPI. With the fitting parameters
+of the calibration curve, this code can also do 3D single molecule
+localization.
 
-  - Input file:
-    -----------------------------------------------------------------------
+### Input file
+```
     1                    ! image file format: 0:mat, 1:tiff, 2:raw
     data/image.tif       ! image filename.
     data/image.cab       ! calibration parameter filename.
@@ -34,62 +34,59 @@
     0.5                  ! max ratio of d(Intensity)/Intensity
     -1000 1000 1         ! Solve z-coord.: [z1,z2],dz
     0                    ! verbose message
-    -----------------------------------------------------------------------
+```
 
 
-- calbfit:
-  - Description:
-    Use the calibration data file (i.e., the length of X-axis or Y-axis
-    of ellipse shaped spot versus its z position) to fit to the function
-    form of the calibration curve. The fitting function is:
+## calbfit:
+### Description:
+Use the calibration data file (i.e., the length of X-axis or Y-axis
+of ellipse shaped spot versus its z position) to fit to the function
+form of the calibration curve. The fitting function is:
 
-    f(z) = w0*sqrt(1+((z-c)/d)**2*(1+A*((z-c)/d)+B*((z-c)/d)**2))
+f(z) = w0*sqrt(1+((z-c)/d)**2*(1+A*((z-c)/d)+B*((z-c)/d)**2))
 
-    where "z" is the z position of the spot, and w0, A, B, c, d are the
-    fitting parameters.
+where "z" is the z position of the spot, and w0, A, B, c, d are the
+fitting parameters.
 
-  - Usage:
-    ./calbfit [-v] <calb_rawX_file> <calb_rawY_file> <outfn>
+### Usage:
+`./calbfit [-v] <calb_rawX_file> <calb_rawY_file> <outfn>`
+where <calb_rawX_file> and <calb_rawY_file> are the list of ellipical
+axis length (for X and Y, respectively) and spot z position data, which
+are measured in experiments. The data format is:
+```
+# z position  axis length
+0.00000000    1658.56967455 
+0.99945975    1656.37265721 
+1.99891950    1654.17752838 
+2.99837925    1651.98428806 
+....          ....
+```
 
-    where <calb_rawX_file> and <calb_rawY_file> are the list of ellipical
-    axis length (for X and Y, respectively) and spot z position data, which
-    are measured in experiments. The data format is:
+### Output
+The output file contains the fitting results of the calibration curve,
+for both X-axis and Y-axis. For example:
 
-    -----------------------------------------------------------------------
-    # z position  axis length
-    0.00000000    1658.56967455 
-    0.99945975    1656.37265721 
-    1.99891950    1654.17752838 
-    2.99837925    1651.98428806 
-    ....          ....
-    -----------------------------------------------------------------------
+```
+w0x =  3.7951032353E+02 +- 1.9727E-10
+WxA = -2.4912708613E-12 +- 2.4157E-12
+WxB =  2.5000000000E-01 +- 1.7360E-12
+Wxc =  1.1632308250E+03 +- 4.7015E-10
+Wxd =  4.4804058223E+02 +- 5.9956E-10
+w0y =  4.1035075257E+02 +- 1.6612E-10
+WyA =  2.9161639768E-12 +- 3.4227E-12
+WyB =  2.5000000000E-01 +- 2.1385E-12
+Wyc =  6.3270737668E+02 +- 5.9411E-10
+Wyd =  5.6715914417E+02 +- 7.2582E-10
+```
 
-  - Output:
-    The output file contains the fitting results of the calibration curve,
-    for both X-axis and Y-axis. For example:
+## aimg
+### Description
+Use random number generator to generate an artificial image with spots,
+which could be used for test. The image size, number of spots, and spot
+size (in pixels) are fixed. The spot positions, spot intensity, spot
+width, and the noise intensity are randomly generated.
 
-    -----------------------------------------------------------------------
-    w0x =  3.7951032353E+02 +- 1.9727E-10
-    WxA = -2.4912708613E-12 +- 2.4157E-12
-    WxB =  2.5000000000E-01 +- 1.7360E-12
-    Wxc =  1.1632308250E+03 +- 4.7015E-10
-    Wxd =  4.4804058223E+02 +- 5.9956E-10
-    w0y =  4.1035075257E+02 +- 1.6612E-10
-    WyA =  2.9161639768E-12 +- 3.4227E-12
-    WyB =  2.5000000000E-01 +- 2.1385E-12
-    Wyc =  6.3270737668E+02 +- 5.9411E-10
-    Wyd =  5.6715914417E+02 +- 7.2582E-10
-    -----------------------------------------------------------------------
-
-
-- aimg:
-  - Description:
-    Use random number generator to generate an artificial image with spots,
-    which could be used for test. The image size, number of spots, and spot
-    size (in pixels) are fixed. The spot positions, spot intensity, spot
-    width, and the noise intensity are randomly generated.
-
-  - Input file:
+### Input file
     -----------------------------------------------------------------------
     testimg      ! output image filename (for both JPG and RAW)
     32339        ! random number seed
@@ -102,25 +99,25 @@
     10           ! mesh size of each pixel to generate spots
     -----------------------------------------------------------------------
 
-  - Output files:
-    - testimg.tab:
-      List of randomly generated positions, width, intensity, and S/N ratio
-      of each spot.
+### Output files
+- testimg.tab:
+  List of randomly generated positions, width, intensity, and S/N ratio
+  of each spot.
 
-    - testimg.jpg:
-      The artificially generated image with spots.
+- testimg.jpg:
+  The artificially generated image with spots.
 
-    - testimg.txt:
-      The list of (x,y) position and intensity of each pixel of the JPEG image.
+- testimg.txt:
+  The list of (x,y) position and intensity of each pixel of the JPEG image.
 
 
-- pclst:
-  - Description:
-    This code finds the cluster of spots from the data file of spot list,
-    compute the correlation of spot positions of this cluster, and output
-    the cluster information to "xcor.dat".
+## pclst
+### Description
+This code finds the cluster of spots from the data file of spot list,
+compute the correlation of spot positions of this cluster, and output
+the cluster information to "xcor.dat".
 
-  - Input file:
+### Input file
     -----------------------------------------------------------------------
     0000_spot.txt           ! input spot data filename
     0000_Fsts.txt           ! input frame statistics filename
@@ -135,7 +132,7 @@
     0                       ! verbose message output
     -----------------------------------------------------------------------
 
-  - Output file:
+### Output file
     xcor.dat:
     - N_REC:   number of clusters found.
     - REC_ID:  cluster ID
@@ -149,40 +146,41 @@
     - list the histogram of spot position correlation.
 
 
-- pspot:
-  - Description:
-    This code graphically displays the found spots on the screen, shows the
-    the clusters of spots from data file "xcor.dat", and generate the output
-    image and cluster information. This code is developed by OpenGL. It
-    generates 3 kinds of outputs:
+## pspot
+### Description
+This code graphically displays the found spots on the screen, shows the
+the clusters of spots from data file "xcor.dat", and generate the output
+image and cluster information. This code is developed by OpenGL. It
+generates 3 kinds of outputs:
 
-    - 0:spot mode:
-      Display the found spots from data files and show the clusters of spots
-      from data file "xcor.dat". In this mode user can interactively circle
-      new clusters or delete the found clusters by mouse, in case that some
-      of the clusters may not be determined correctly.
+- 0:spot mode:
+  Display the found spots from data files and show the clusters of spots
+  from data file "xcor.dat". In this mode user can interactively circle
+  new clusters or delete the found clusters by mouse, in case that some
+  of the clusters may not be determined correctly.
 
-    - 1:spotmesh mode:
-      Defining a grid on the image (each mesh has size N(nm) x N(nm)), count
-      the number of spots (events) within each mesh. Then use the spots count
-      of each mesh as intensity to generate the spot image.
+- 1:spotmesh mode:
+  Defining a grid on the image (each mesh has size N(nm) x N(nm)), count
+  the number of spots (events) within each mesh. Then use the spots count
+  of each mesh as intensity to generate the spot image.
 
-    - 2:pixel mode:
-      Generate the image of sum of all source (input) frames of images.
+- 2:pixel mode:
+  Generate the image of sum of all source (input) frames of images.
 
 
-  - Usage:
-      ./pspot [-v] <input>
-          -v: display the image on the screen.
+### Usage
+```
+./pspot [-v] <input>
+ -v: display the image on the screen.
+```
+Without the `-v` flag, the code just process data, generate the output
+images and data, and then stop. With the `-v` flag, it shows the image
+in the screen. For 0:spot mode, user can use mouse to manually select
+or delete the spot clusters. The final output images will be generate
+when quit the code.
 
-    Without the "-v" flag, the code just process data, generate the output
-    images and data, and then stop. With the "-v" flag, it shows the image
-    in the screen. For 0:spot mode, user can use mouse to manually select
-    or delete the spot clusters. The final output images will be generate
-    when quit the code.
-
-  - Input file:
-    -----------------------------------------------------------------------
+### Input file:
+```
     0                   ! data format: 0:spot, 1:spotmesh, 2:pixel
     spot.txt            ! input data (spot list, or pixel sum (for mode 2))
     Fsts.txt            ! frame statistics filename
@@ -195,16 +193,16 @@
     20                  ! mesh size of the grid (nm)
     0.5                 ! gamma of the gray scale image
     /path/to/font72.glf ! the path of the font for display
-    -----------------------------------------------------------------------
+```
 
-  - Output file:
-    - For mode 0:spot:
+### Output file:
+- For mode 0: spot:
       Generate image of spots with identified clusters, and update "xcor.dat" 
       if the user has manually added or deleted some clusters.
 
-    - For mode 1:spotmesh:
+- For mode 1: spotmesh:
       Generate image of spots in each mesh of a given grid, where the
       spot intensity stands for the count of spots in that mesh.
 
-    - For mode 2:pixel:
+- For mode 2: pixel:
       Generate image of sum of pixel values of the input image frames.
