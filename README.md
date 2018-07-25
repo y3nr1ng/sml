@@ -11,29 +11,29 @@ localization.
 
 ### Input file
 ```
-    1                    ! image file format: 0:mat, 1:tiff, 2:raw
-    data/image.tif       ! image filename.
-    data/image.cab       ! calibration parameter filename.
-    spot                 ! output data filename for normal spots.
-    spotH                ! output data filename for high intensity spots.
-    Fsts                 ! output data filename for frame event statistics.
-    Fsum                 ! output data filename for frame sums.
-    candidate            ! output data filename for candidate events (pixels).
-    0                    ! mode: 0:2D, 1:3D
-    1 10                 ! frameID1, frameID2.
-    50 229 50 229        ! frame_x1, frame_x2, frame_y1, frame_y2.
-    5 5                  ! x_find_pixels, y_find_pixels.
-    50 450               ! threshold1, threshold2 (in # of photons)
-    3                    ! max. frame separation for identical particles
-    140.8451 134.2282    ! nm per pixels in (x,y) directions
-    0.1                  ! factor to convert pixel intensity to # of photons
-    0                    ! rmode: 0:spot fitting, 1:fit & output spot
-    1                    ! alg: 0:regional max, 1:max intensity
-    100 100 100          ! max_dx, max_dy, max_dw (nm)
-    10                   ! min_SN (Signal/Noise ratio)
-    0.5                  ! max ratio of d(Intensity)/Intensity
-    -1000 1000 1         ! Solve z-coord.: [z1,z2],dz
-    0                    ! verbose message
+  1                    ! image file format: 1:tiff, 2:raw
+  data/image.tif       ! image filename.
+  data/image.cab       ! calibration parameter filename.
+  spot                 ! output data filename for normal spots.
+  spotH                ! output data filename for high intensity spots.
+  Fsts                 ! output data filename for frame event statistics.
+  Fsum                 ! output data filename for frame sums.
+  candidate            ! output data filename for candidate events (pixels).
+  0                    ! mode: 0:2D, 1:3D
+  1 10                 ! frameID1, frameID2.
+  50 229 50 229        ! frame_x1, frame_x2, frame_y1, frame_y2.
+  5 5                  ! x_find_pixels, y_find_pixels.
+  50 450               ! threshold1, threshold2 (in # of photons)
+  3                    ! max. frame separation for identical particles
+  140.8451 134.2282    ! nm per pixels in (x,y) directions
+  0.1                  ! factor to convert pixel intensity to # of photons
+  0                    ! rmode: 0:spot fitting, 1:fit & output spot
+  1                    ! alg: 0:regional max, 1:max intensity
+  100 100 100          ! max_dx, max_dy, max_dw (nm)
+  10                   ! min_SN (Signal/Noise ratio)
+  0.5                  ! max ratio of d(Intensity)/Intensity
+  -1000 1000 1         ! Solve z-coord.: [z1,z2],dz
+  0                    ! verbose message
 ```
 
 
@@ -49,7 +49,9 @@ where "z" is the z position of the spot, and w0, A, B, c, d are the
 fitting parameters.
 
 ### Usage:
-`./calbfit [-v] <calb_rawX_file> <calb_rawY_file> <outfn>`
+```
+./calbfit [-v] <calb_rawX_file> <calb_rawY_file> <outfn>
+```
 where <calb_rawX_file> and <calb_rawY_file> are the list of ellipical
 axis length (for X and Y, respectively) and spot z position data, which
 are measured in experiments. The data format is:
@@ -87,17 +89,17 @@ size (in pixels) are fixed. The spot positions, spot intensity, spot
 width, and the noise intensity are randomly generated.
 
 ### Input file
-    -----------------------------------------------------------------------
-    testimg      ! output image filename (for both JPG and RAW)
-    32339        ! random number seed
-    200 200      ! iH, iW: image size (pixel)
-    0.5 0.9      ! Signal intensity range: [0.0-1.0]
-    0.0 0.1      ! Noise intensity range:  [0.0-1.0]
-    0.5 2.5      ! Spot width range (pixel)
-    20           ! number of spots
-    9            ! spot size (pixels)
-    10           ! mesh size of each pixel to generate spots
-    -----------------------------------------------------------------------
+```
+  testimg      ! output image filename (for both JPG and RAW)
+  32339        ! random number seed
+  200 200      ! iH, iW: image size (pixel)
+  0.5 0.9      ! Signal intensity range: [0.0-1.0]
+  0.0 0.1      ! Noise intensity range:  [0.0-1.0]
+  0.5 2.5      ! Spot width range (pixel)
+  20           ! number of spots
+  9            ! spot size (pixels)
+  10           ! mesh size of each pixel to generate spots
+```
 
 ### Output files
 - testimg.tab:
@@ -118,19 +120,19 @@ compute the correlation of spot positions of this cluster, and output
 the cluster information to "xcor.dat".
 
 ### Input file
-    -----------------------------------------------------------------------
-    0000_spot.txt           ! input spot data filename
-    0000_Fsts.txt           ! input frame statistics filename
-    0     0                 ! left-bottom corner of the image (nm)
-    20000 20000             ! right-top   corner of the image (nm)
-    0.3                     ! max. event density for starting frame
-    2000                    ! max. distances of spots to form a cluster (nm)
-    100                     ! min # of spots within a cluster to draw
-    20                      ! # of rectangles to draw
-    150                     ! # of clusters to keep in the first stage
-    100                     ! n_intvls for histogram for xcor
-    0                       ! verbose message output
-    -----------------------------------------------------------------------
+```
+  0000_spot.txt           ! input spot data filename
+  0000_Fsts.txt           ! input frame statistics filename
+  0     0                 ! left-bottom corner of the image (nm)
+  20000 20000             ! right-top   corner of the image (nm)
+  0.3                     ! max. event density for starting frame
+  2000                    ! max. distances of spots to form a cluster (nm)
+  100                     ! min # of spots within a cluster to draw
+  20                      ! # of rectangles to draw
+  150                     ! # of clusters to keep in the first stage
+  100                     ! n_intvls for histogram for xcor
+  0                       ! verbose message output
+```
 
 ### Output file
     xcor.dat:
@@ -181,18 +183,18 @@ when quit the code.
 
 ### Input file:
 ```
-    0                   ! data format: 0:spot, 1:spotmesh, 2:pixel
-    spot.txt            ! input data (spot list, or pixel sum (for mode 2))
-    Fsts.txt            ! frame statistics filename
-    spotmesh.txt        ! output spot meshed filename
-    0.3                 ! max. event density for starting frame
-    0                   ! image size: 0:full, 1:scaled
-    512 512             ! image size  (pixel)
-    20000 20000         ! image range (nm)
-    100                 ! n_intvls for histogram for xcor
-    20                  ! mesh size of the grid (nm)
-    0.5                 ! gamma of the gray scale image
-    /path/to/font72.glf ! the path of the font for display
+  0                   ! data format: 0:spot, 1:spotmesh, 2:pixel
+  spot.txt            ! input data (spot list, or pixel sum (for mode 2))
+  Fsts.txt            ! frame statistics filename
+  spotmesh.txt        ! output spot meshed filename
+  0.3                 ! max. event density for starting frame
+  0                   ! image size: 0:full, 1:scaled
+  512 512             ! image size  (pixel)
+  20000 20000         ! image range (nm)
+  100                 ! n_intvls for histogram for xcor
+  20                  ! mesh size of the grid (nm)
+  0.5                 ! gamma of the gray scale image
+  /path/to/font72.glf ! the path of the font for display
 ```
 
 ### Output file:

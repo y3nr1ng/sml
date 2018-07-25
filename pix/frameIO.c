@@ -34,32 +34,6 @@ static void FIO_separate(frameIO_t *fio, char *imgfn)
 
 /*---------------------------------------------------------------------------
  *
- *	Frame I/O from MATLAB files.
- *
- *--------------------------------------------------------------------------*/
-
-static frameloc_t *FR_matlab(para_t *p, frameIO_t *fio, int idx)
-{
-    frameloc_t *fm=NULL;
-    matfile_t  *matf=NULL;
-    char        fn[1024];
-
-    sprintf(fn, fio->basefn, idx);
-    matf = matRead(fn);
-    fm   = frameCreate(p, idx, &(matf->mx), 's');
-    matFree(matf);
-
-    return fm;
-}
-
-static void MAT_info(para_t *p, frameIO_t *fio)
-{
-
-
-}
-
-/*---------------------------------------------------------------------------
- *
  *	Frame I/O from TIFF files.
  *
  *--------------------------------------------------------------------------*/
@@ -229,10 +203,6 @@ frameIO_t *frameIO_Open(para_t *p)
     fio->type = p->imgfmt;
 
     switch (p->imgfmt) {
-    case 0:
-	FIO_separate(fio, p->imgfn);
-	break;
-
     case 1:
 	FIO_tiff(fio, p->imgfn);
 	break;
@@ -270,10 +240,6 @@ void frameIO_init(para_t *p)
 //
     fio = frameIO_Open(p);
     switch (p->imgfmt) {
-    case 0:
-	MAT_info(p, fio);
-	break;
-
     case 1:
 	tiff_info(p, fio);
 	break;
@@ -325,10 +291,6 @@ frameloc_t *frameIO(para_t *p, frameIO_t *fio, int idx)
     frameloc_t *fm=NULL;
 
     switch (p->imgfmt) {
-    case 0:
-	fm = FR_matlab(p, fio, idx);
-	break;
-
     case 1:
 	fm = FR_tiff(p, fio, idx);
 	break;

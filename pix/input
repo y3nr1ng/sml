@@ -1,4 +1,4 @@
-1			! image file format: 0:mat, 1:tiff, 2:raw
+1			! image file format: 1:tiff, 2:raw
 data/image.tif		! image filename.
 data/image.cab		! calibration parameter filename.
 spot			! output data filename for normal spots.
