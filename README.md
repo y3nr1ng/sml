@@ -12,7 +12,16 @@ Give an example.
 ```
 
 ### Installing
-A step-by-step series of examples that tell the user how to get a development environment running.
+We first create a functional environment based on `conda` using the [`environments.yml`](environments.yml) file.
+```
+conda env create -f environments.yml
+```
+To keep the environment up-to-date for any upstream bugs, package versions are not strictly fixed in the environment definition.
+
+The newly created environment is called `sml-dev`, activate it.
+```
+conda activate sml-dev
+```
 
 
 ## Running the tests
