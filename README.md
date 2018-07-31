@@ -1,4 +1,48 @@
 # Single molecule localization
+Project description.
+
+
+## Getting Started
+Instructions to get a copy of the project up and running on local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+
+### Prerequisites
+What things you need to install the software?
+```
+Give an example.
+```
+
+### Installing
+A step-by-step series of examples that tell the user how to get a development environment running.
+
+
+## Running the tests
+Explain how to run the automated tests.
+
+
+## Deployment
+Additional notes about how to deploy this project on a live system.
+
+
+## Built with
+
+
+## Contributing
+
+
+## Versioning
+
+
+## Authors
+
+
+## License
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+
+
+## Acknowledgments
+Hat tip to anyone whose code was used/inspired.
+
+---
 
 ## pix
 ### Description
@@ -57,10 +101,10 @@ axis length (for X and Y, respectively) and spot z position data, which
 are measured in experiments. The data format is:
 ```
 # z position  axis length
-0.00000000    1658.56967455 
-0.99945975    1656.37265721 
-1.99891950    1654.17752838 
-2.99837925    1651.98428806 
+0.00000000    1658.56967455
+0.99945975    1656.37265721
+1.99891950    1654.17752838
+2.99837925    1651.98428806
 ....          ....
 ```
 
@@ -199,7 +243,7 @@ when quit the code.
 
 ### Output file:
 - For mode 0: spot:
-      Generate image of spots with identified clusters, and update "xcor.dat" 
+      Generate image of spots with identified clusters, and update "xcor.dat"
       if the user has manually added or deleted some clusters.
 
 - For mode 1: spotmesh:
