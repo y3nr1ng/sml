@@ -3,25 +3,27 @@ Project description.
 
 
 ## Getting Started
-Instructions to get a copy of the project up and running on local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+The following instructions will get a copy of this project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy it on a live system.
 
 ### Prerequisites
-What things you need to install the software?
+You will need a functional Python environment, [conda](https://conda.io/docs/) is the preferred package management system for us.
 ```
 Give an example.
 ```
 
 ### Installing
-We first create a functional environment based on `conda` using the [`environments.yml`](environments.yml) file.
+We first create a functional environment based on the [environments.yml](environments.yml) file.
 ```
 conda env create -f environments.yml
 ```
 To keep the environment up-to-date for any upstream bugs, package versions are not strictly fixed in the environment definition.
 
-The newly created environment is called `sml-dev`, activate it.
+The newly created environment is now called `sml-dev`, activate it.
 ```
 conda activate sml-dev
 ```
+
+Next, we need to install a local copy of it.
 
 
 ## Running the tests
