@@ -7,9 +7,6 @@ The following instructions will get a copy of this project up and running on you
 
 ### Prerequisites
 You will need a functional Python environment, [conda](https://conda.io/docs/) is the preferred package management system for us.
-```
-Give an example.
-```
 
 ### Installing
 We first create a functional environment based on the [environments.yml](environments.yml) file.
@@ -23,7 +20,7 @@ The newly created environment is now called `sml-dev`, activate it.
 conda activate sml-dev
 ```
 
-Next, we need to install a local copy of it.
+Next, we need to install a local copy of it, 
 
 
 ## Running the tests
