@@ -1,0 +1,116 @@
+---
+# Image file format.
+#   - TIFF
+#       All image frames are combined in a single TIFF file.
+#   - RAW
+#       Each frame is stored in a separate RAW data file.
+image_format: "TIFF"
+
+input:
+    # Source image filename.
+    image_file: "data/image.tif"
+    # Calibration parameter filename.
+    calibration_file: "data/image.cab"
+
+output:
+    # Filename for normal spots.
+    spot:       "spot"
+    # Filename for high intensity spots.
+    spoth:      "spot_high"
+    # Filename for frame event statistics.
+    statistics: "Fstats"
+    # Filename for accumulated intensity of all frames.
+    fsum:       "Fsum"
+    # Filename for candidate events.
+    candidate:  "candidate"
+
+# Localization dimension
+#   - 2D
+#   - 3D
+n_dim:  "2D"
+
+# Frame indices of the starting and ending frames.
+#   - Setting `start` to -1 means starting from the 1st frame.
+#   - Setting `end` to -1 means ending at the last frame.
+frames:
+    start: 1
+    end: 10
+
+# Region of interest
+roi:
+    x1: 50
+    y1: 50
+    x2: 229
+    y2: 229
+    
+#
+#   Square size of pixels to fit to the Gaussian model to find the precise
+#   location of a particle.
+#
+X_FIND_PIXELS:  5
+Y_FIND_PIXELS:  5
+
+#
+#   Thresholds of intensities of valid pixels:
+#    - I_THRES_MIN:  The lower bound. Intensities smaller than this value are
+#                    considered as noise.
+#    - I_THRES_MAX:  The upper bound. Intensities larger than this value may
+#                    due to abnormal events (e.g., high energy cosmic rays)
+#
+I_THRES_MIN:  50
+I_THRES_MAX:  450
+
+#
+#   Maximum frame separation for identical particles.
+#
+NFSEP_IDP:  3
+
+#
+#   Nanometer per pixels in (x,y) directions
+#
+NM_PIXEL_X:   140.8451
+NM_PIXEL_Y:   134.2282
+
+# Conversion factor for pixel intensity to number of photons.
+i_photon:  0.1
+
+
+# Running modes:
+#   - scan
+#       Only scan through frames for candidate spots.
+#   - sml
+#       Scan for candidate spots and perform Gaussian fits for each spot.
+mode:   "SML"
+
+# Algorithm to find the candidate spots:
+#   - regional_max: Regional maximum algorithm.
+#   - intensity_max: Maximum intensity and mark algorithm.
+scan_algorithm: "regional_max"
+
+#
+#   Tolerance for Gaussian fit (dx, dy, dw) for each spot (nm).
+#
+FIT_MAX_DX:  100
+FIT_MAX_DY:  100
+FIT_MAX_DW:  100
+
+#
+#   Spot intensity criterias:
+#    - MIN_SN_RATIO:  Minimum acceptable Signal/Noise ratio.
+#    - MAX_DI_I:      Maximum acceptable ratio of d(Intensity)/Intensity.
+#
+MIN_SN_RATIO:  10
+MAX_DI_I:      0.5
+
+#
+#   Solving z-coordinate for 3D SML (using Bisection algorithm):
+#    - SOLVER_Z1:  Starting point of range of z to find the solution.
+#    - SOLVER_Z2:  Ending point of range of z to find the solution.
+#    - SOLVER_DZ:  Step size in the range of z to find the solution.
+#
+SOLVER_Z1:  -1000
+SOLVER_Z2:   1000
+SOLVER_DZ:   1
+
+# Output message verbosity.
+verbose:    True
