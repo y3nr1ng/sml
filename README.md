@@ -1,4 +1,59 @@
 # Single molecule localization
+Project description.
+
+
+## Getting Started
+The following instructions will get a copy of this project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy it on a live system.
+
+### Prerequisites
+You will need a functional Python environment, [conda](https://conda.io/docs/) is the preferred package management system for us.
+```
+Give an example.
+```
+
+### Installing
+We first create a functional environment based on the [environments.yml](environments.yml) file.
+```
+conda env create -f environments.yml
+```
+To keep the environment up-to-date for any upstream bugs, package versions are not strictly fixed in the environment definition.
+
+The newly created environment is now called `sml-dev`, activate it.
+```
+conda activate sml-dev
+```
+
+Next, we need to install a local copy of it.
+
+
+## Running the tests
+Explain how to run the automated tests.
+
+
+## Deployment
+Additional notes about how to deploy this project on a live system.
+
+
+## Built with
+
+
+## Contributing
+
+
+## Versioning
+
+
+## Authors
+
+
+## License
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+
+
+## Acknowledgments
+Hat tip to anyone whose code was used/inspired.
+
+---
 
 ## pix
 ### Description
@@ -57,10 +112,10 @@ axis length (for X and Y, respectively) and spot z position data, which
 are measured in experiments. The data format is:
 ```
 # z position  axis length
-0.00000000    1658.56967455 
-0.99945975    1656.37265721 
-1.99891950    1654.17752838 
-2.99837925    1651.98428806 
+0.00000000    1658.56967455
+0.99945975    1656.37265721
+1.99891950    1654.17752838
+2.99837925    1651.98428806
 ....          ....
 ```
 
@@ -199,7 +254,7 @@ when quit the code.
 
 ### Output file:
 - For mode 0: spot:
-      Generate image of spots with identified clusters, and update "xcor.dat" 
+      Generate image of spots with identified clusters, and update "xcor.dat"
       if the user has manually added or deleted some clusters.
 
 - For mode 1: spotmesh:

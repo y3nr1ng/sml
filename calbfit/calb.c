@@ -77,11 +77,11 @@ void init_para(int verb, calb_t *cb, double *a)
     w0 = f[0];
     ii = 0;
     for (i=1; i < N; i++) {
-	if (w0 > f[i]) {
-	    c  = x[i];
-	    w0 = f[i];
-	    ii = i;
-	}
+        if (w0 > f[i]) {
+            c  = x[i];
+            w0 = f[i];
+            ii = i;
+        }
     }
 
     df = ((f[ii-1]-w0) + (f[ii+1]-w0)) / 2.0;
@@ -120,7 +120,7 @@ void calb_fit(int verb, calb_t *cb, char *name)
     tol   = 1.0e-6;
 
     init_para(verb, cb, a);
-    nlinfit(cbfunc, cb, cb->N, na, a, da, &chisq, tol, mloop, verb); 
+    nlinfit(cbfunc, cb, cb->N, na, a, da, &chisq, tol, mloop, verb);
     cb->w0 = a[0];
     cb->c  = a[1];
     cb->d  = a[2];

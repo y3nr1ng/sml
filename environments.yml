@@ -1,0 +1,15 @@
+name: sml-dev
+
+dependencies:
+  # core
+  - python=3.6
+
+  # basic numeric libraries
+  - numpy
+  - pandas
+
+  # optimization
+  - scipy
+
+  # command line argument parser
+  - click
