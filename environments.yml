@@ -13,3 +13,6 @@ dependencies:
 
   # command line argument parser
   - click
+
+  # io
+  - pyyaml
