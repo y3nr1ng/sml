@@ -20,12 +20,54 @@ The newly created environment is now called `sml-dev`, activate it.
 conda activate sml-dev
 ```
 
-Next, we need to install a local copy of it, 
+Next, we need to install a local copy of it, we are going to use `conda-develop`, for `pip` users, ignore this step.
+```
+conda install conda-build
+conda develop .
+```
+This will create a `.pth` file in current environment, linking this repository to make it appears as installed.
 
 
 ## Running the tests
 Explain how to run the automated tests.
 
+To test whether everything goes as expected, go to [tests](tests) folder, and
+```
+python -m sml.cli.pix input.yml
+```
+This requests Python to use `sml.cli.pix` module, and exexcute it with command line arguments `input.yml`, which points to the file under [tests](tests). For now (2018/08/01), it should print parsed results.
+```
+{'FIT_MAX_DW': 100,
+ 'FIT_MAX_DX': 100,
+ 'FIT_MAX_DY': 100,
+ 'I_THRES_MAX': 450,
+ 'I_THRES_MIN': 50,
+ 'MAX_DI_I': 0.5,
+ 'MIN_SN_RATIO': 10,
+ 'NFSEP_IDP': 3,
+ 'NM_PIXEL_X': 140.8451,
+ 'NM_PIXEL_Y': 134.2282,
+ 'SOLVER_DZ': 1,
+ 'SOLVER_Z1': -1000,
+ 'SOLVER_Z2': 1000,
+ 'X_FIND_PIXELS': 5,
+ 'Y_FIND_PIXELS': 5,
+ 'frames': {'end': 10, 'start': 1},
+ 'i_photon': 0.1,
+ 'image_format': 'TIFF',
+ 'input': {'calibration_file': 'data/image.cab',
+           'image_file': 'data/image.tif'},
+ 'mode': 'SML',
+ 'n_dim': '2D',
+ 'output': {'candidate': 'candidate',
+            'fsum': 'Fsum',
+            'spot': 'spot',
+            'spoth': 'spot_high',
+            'statistics': 'Fstats'},
+ 'roi': {'x1': 50, 'x2': 229, 'y1': 50, 'y2': 229},
+ 'scan_algorithm': 'regional_max',
+ 'verbose': True}
+```
 
 ## Deployment
 Additional notes about how to deploy this project on a live system.
