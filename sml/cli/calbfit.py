@@ -3,16 +3,16 @@ import logging
 import click
 import pandas as pd
 
+from sml.calibrate.fitting import fit_curve
+
 @click.command()
-@click.argument('raw_input', type=click.Path(exists=True),
-                help="A list of ellipical axis lengths for X and Y, with respect to z position.")
-@click.argument('output',
-                help="Fitting results of the calibration curve for both X and Y axes.")
+@click.argument('raw_input', type=click.Path(exists=True))
+@click.argument('output')
 @click.option('-v', '--verbose', is_flag=True)
 def main(raw_input, output, verbose):
     data = pd.read_csv(raw_input)
-
-    print(verbose)
-
+    p = fit_curve(data['z'].values, data['x'].values)
+    print(p)
+    
 if __name__ == '__main__':
     main()
