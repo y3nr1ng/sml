@@ -11,8 +11,16 @@ from sml.calibrate.fitting import fit_curve
 @click.option('-v', '--verbose', is_flag=True)
 def main(raw_input, output, verbose):
     data = pd.read_csv(raw_input)
-    p = fit_curve(data['z'].values, data['x'].values)
-    print(p)
-    
+
+    print("--- x ---")
+    p, w = fit_curve(data['z'].values, data['x'].values)
+    data['xo'] = w
+
+    print("--- y ---")
+    p, w = fit_curve(data['z'].values, data['y'].values)
+    data['yo'] = w
+
+    data.to_csv('result.csv', index=False, float_format='%.4f')
+
 if __name__ == '__main__':
     main()
