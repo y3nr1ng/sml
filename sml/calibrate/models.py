@@ -1,27 +1,65 @@
-from abc import abstractmethod
-from pprint import pprint
+from abc import ABCMeta, abstractmethod
+from math import sqrt
 
-class BaseModel(object):
+import numpy as np
+
+class BaseModel(object, metaclass=ABCMeta):
     __slots__ = ()
 
-    def __init__(self, **kwargs):
-        if not all(attr in kwargs for attr in self.__slots__):
-            raise ValueError("incomplete parameter list")
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
     @abstractmethod
-    def _equation(self, x):
+    def initial_guess(self, xdata, ydata):
+        """
+        Initial guess on independent variables.
+
+        Parameters
+        ----------
+        xdata : np.ndarray
+            Independent variables.
+        ydata : np.ndarray
+            Dependent variables.
+
+        Returns
+        -------
+        arguments : list
+            List of arguments in order specified by `__slots__`.
+        bounds : list of tuples
+            Boundary for each arguments.
+        """
         raise NotImplementedError
 
-    def __call__(self, x):
-        return _equation(x)
+    @abstractmethod
+    def _function(self, x, *args):
+        raise NotImplementedError
+
+    @property
+    def arguments(self):
+        return [getattr(self, attr) for attr in self.__slots__]
+
+    @arguments.setter
+    def arguments(self, *args):
+        for attr, arg in zip(self.__slots__, args):
+            setattr(self, attr, arg)
+
+    def __call__(self, x, *args):
+        """
+        Apply the model with specified independent variable and model arguments.
+        If arguments are not specified, saved arguments are used.
+
+        Parameters
+        ----------
+        x : scalar or np.ndarray
+            Independent variable to apply the model (y=f(x)) to.
+        """
+        if args:
+            return self._function(x, *args)
+        else:
+            return self._function(x, *self.arguments)
 
     def __str__(self):
         dump = '('
         dump += ', '.join(self.__slots__)
         dump += ')=('
-        dump += ', '.join(str(getattr(self, attr)) for attr in self.__slots__)
+        dump += ', '.join(str(x) for x in self.arguments)
         dump += ')'
         return dump
 
@@ -33,10 +71,6 @@ class PolynomialModel(BaseModel):
     """
     __slots__ = ('w0', 'A', 'B', 'zc')
 
-    def _equation(self, z):
-        w0, A, B, zc = self.w0, self.A, self.B, self.zc
-        return A * (z-zc)**2 + B
-
 class HuangModel(BaseModel):
     """
     The relationship between the axial position of a molecule and its imaged
@@ -44,7 +78,28 @@ class HuangModel(BaseModel):
     """
     __slots__ = ('w0', 'A', 'B', 'zc', 's')
 
-    def _equation(self, z):
-        #TODO suggest using (w0/2) to follow the original model
-        w0, A, B, zc, s = self.w0, self.A, self.B, self.zc, self.s
+    def initial_guess(self, z, w):
+        iw_m = w.argmin()
+
+        # center of the peak
+        zc = z[iw_m]
+        w0 = w[iw_m]
+
+        # finding deltas to estimate sigma^2
+        if iw_m == 0:
+            dz = z[iw_m+1]-zc
+            dw = w[iw_m+1]-w0
+        elif iw_m == z.size-1:
+            dz = zc-z[iw_m-1]
+            dw = w[iw_m-1]-w0
+        else:
+            dz = ((zc-z[iw_m-1]) + (z[iw_m+1]-zc)) / 2.
+            dw = ((w[iw_m-1]-w0) + (w[iw_m+1]-w0)) / 2.
+        d = dz / sqrt(2. * dw/w0)
+
+        self.w0, self.A, self.B, self.zc, self.s = w0, .5, .5, zc, d
+
+        return self.arguments, None
+
+    def _function(self, x, w0, A, B, zc, s):
         return w0 * np.sqrt( 1 + ((x-zc)/s)**2 * (1 + A*((x-zc)/s) + B*((x-zc)/s)**2) )
