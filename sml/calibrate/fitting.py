@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 
+from .models import HuangModel
+
 logger = logging.getLogger(__name__)
 
 Parameters = namedtuple('Parameters', ['w0', 'A', 'B', 'zc', 'd'])
