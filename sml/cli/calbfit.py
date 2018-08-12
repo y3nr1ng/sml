@@ -3,7 +3,7 @@ import logging
 import click
 import pandas as pd
 
-from sml.calibrate.fitting import fit_curve
+from sml.calibrate.fitting import generate_lookup_function
 
 @click.command()
 @click.argument('raw_input', type=click.Path(exists=True))
@@ -22,13 +22,18 @@ def main(raw_input, output, verbose):
 
     data = pd.read_csv(raw_input)
 
+    z, x, y = data['z'].values, data['x'].values, data['y'].values
+    z0, fx, fy = generate_lookup_function(z, x, y, model='huang', tol=1e-5)
+
     print("--- x ---")
-    p, w = fit_curve(data['z'].values, data['x'].values)
-    data['xo'] = w
+    print(fx)
+    data['xo'] = fx(z)
 
     print("--- y ---")
-    p, w = fit_curve(data['z'].values, data['y'].values)
-    data['yo'] = w
+    print(fy)
+    data['yo'] = fx(y)
+
+    print("intersect @ z={:.4f}".format(z0))
 
     data.to_csv('result.csv', index=False, float_format='%.4f')
 
