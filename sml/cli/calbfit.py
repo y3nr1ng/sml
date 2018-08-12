@@ -23,7 +23,7 @@ def main(raw_input, output, verbose):
     data = pd.read_csv(raw_input)
 
     z, x, y = data['z'].values, data['x'].values, data['y'].values
-    f, fx, fy, z0 = generate_lookup_function(z, x, y, model='huang', tol=1e-5)
+    f, fx, fy, z0 = generate_lookup_function(z, x, y, method='huang', model='huang', tol=1e-5)
 
     data['xo'] = fx(z)
     data['yo'] = fy(z)
