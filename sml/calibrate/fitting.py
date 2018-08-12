@@ -11,9 +11,14 @@ from . import defocus, lookup
 
 logger = logging.getLogger(__name__)
 
-model_dispatch = {
+defocus_model_dispatch = {
     'polynomial': defocus.Polynomial,
     'huang': defocus.Huang
+}
+
+lookup_method_dispatch = {
+    'ratio': lookup.Ratio,
+    'huang': lookup.Huang
 }
 
 def fit_depth_curve(z, w, model='huang', tol=1e-5):
@@ -31,7 +36,7 @@ def fit_depth_curve(z, w, model='huang', tol=1e-5):
     tol : float
         Tolerance of z-step variation during fitting.
     """
-    model = model_dispatch.get(model)()
+    model = defocus_model_dispatch.get(model)()
     if model is None:
         raise ValueError("invalid model is provided")
     p0, bounds = model.initial_guess(z, w)
@@ -45,11 +50,6 @@ def fit_depth_curve(z, w, model='huang', tol=1e-5):
     except ValueError:
         raise ValueError("provided samples contain NaNs")
     return model
-
-method_dispatch = {
-    'ratio': lookup.Ratio,
-    'huang': lookup.Huang
-}
 
 def generate_lookup_function(z, w, h, method='ratio', model='huang', tol=1e-5):
     """
@@ -66,8 +66,10 @@ def generate_lookup_function(z, w, h, method='ratio', model='huang', tol=1e-5):
     if not sol.success:
         raise RuntimeError("unable to find z-center")
     elif sol.x.size > 1:
-        raise RuntimeWarning("multiple intersections found {}, use first one".format(sol.x))
+        logger.warning("multiple intersections found, {}"
+                       ", using first one instead".format(sol.x))
     z0 = sol.x[0]
+    logger.debug("intersection at z={:.4f}".format(z0))
 
-    method = method_dispatch.get(method)(fw, fh, z0, tol)
+    method = lookup_method_dispatch.get(method)(fw, fh, z0, tol)
     return method
