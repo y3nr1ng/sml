@@ -3,6 +3,11 @@ from math import sqrt
 
 import numpy as np
 
+__all__ = [
+    'PolynomialModel',
+    'HuangModel'
+]
+
 class BaseModel(object, metaclass=ABCMeta):
     __slots__ = ()
 
@@ -36,7 +41,7 @@ class BaseModel(object, metaclass=ABCMeta):
         return [getattr(self, attr) for attr in self.__slots__]
 
     @arguments.setter
-    def arguments(self, *args):
+    def arguments(self, args):
         for attr, arg in zip(self.__slots__, args):
             setattr(self, attr, arg)
 
@@ -59,7 +64,7 @@ class BaseModel(object, metaclass=ABCMeta):
         dump = '('
         dump += ', '.join(self.__slots__)
         dump += ')=('
-        dump += ', '.join(str(x) for x in self.arguments)
+        dump += ', '.join("{:.4f}".format(x) for x in self.arguments)
         dump += ')'
         return dump
 
