@@ -70,4 +70,4 @@ def generate_lookup_function(z, w, h, method='ratio', model='huang', tol=1e-5):
     z0 = sol.x[0]
 
     method = method_dispatch.get(method)(fw, fh, z0, tol)
-    return method, fw, fh, z0
+    return method

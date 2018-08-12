@@ -23,12 +23,12 @@ def main(raw_input, output, verbose):
     data = pd.read_csv(raw_input)
 
     z, x, y = data['z'].values, data['x'].values, data['y'].values
-    f, fx, fy, z0 = generate_lookup_function(z, x, y, method='huang', model='huang', tol=1e-5)
+    f = generate_lookup_function(z, x, y, method='huang', model='huang', tol=1e-5)
 
-    data['xo'] = fx(z)
-    data['yo'] = fy(z)
+    data['xo'] = f.fw(z)
+    data['yo'] = f.fh(z)
     data['zcal'] = f(x, y)
-    data['z0'] = data['z']-z0
+    data['z0'] = data['z']-f.z0
 
     data.to_csv('result.csv', index=False, float_format='%.4f')
 
