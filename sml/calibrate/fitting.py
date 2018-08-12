@@ -1,32 +1,75 @@
 from collections import namedtuple
+from functools import partial
 import logging
 from math import sqrt
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import least_squares
+from scipy.optimize import curve_fit, root, OptimizeWarning
+
+from . import defocus, lookup
 
 logger = logging.getLogger(__name__)
 
-Arguments = namedtuple('Arguments', ['w0', 'A', 'B', 'c', 'd'])
+defocus_model_dispatch = {
+    'polynomial': defocus.Polynomial,
+    'huang': defocus.Huang
+}
 
-#
-# f(x) = w0 * sqrt( 1 + ((x-c)/d)**2 * (1 + A*((x-c)/d) + B*((x-c)/d)**2) )
-#
-def fit_function():
-    pass
+lookup_method_dispatch = {
+    'ratio': lookup.Ratio,
+    'huang': lookup.Huang
+}
 
-def _init_parameters(df):
-    i_max = df['w0'].idxmax(axis='index')
+def fit_depth_curve(z, w, model='huang', tol=1e-5):
+    """
+    TBA
 
-    df = nan
-    dx = nan
-    d = dx / sqrt(2. * df/w0)
+    Parameters
+    ----------
+    z : np.ndarray
+        Depth.
+    w : np.ndarray
+        Dependent variable of z.
+    model : str
+        Model to fit the curve, 'huang', 'polynomial' (TBA).
+    tol : float
+        Tolerance of z-step variation during fitting.
+    """
+    model = defocus_model_dispatch.get(model)()
+    if model is None:
+        raise ValueError("invalid model is provided")
+    p0, bounds = model.initial_guess(z, w)
+    logger.debug("p0: {}".format(model))
+    try:
+        p, _ = curve_fit(model, z, w, p0=p0, bounds=(-np.inf, np.inf), method='trf', xtol=tol)
+        model.arguments = p
+        logger.debug("popt: {}".format(model))
+    except (OptimizeWarning, RuntimeError):
+        raise RuntimeError("unable to minimize the result")
+    except ValueError:
+        raise ValueError("provided samples contain NaNs")
+    return model
 
-    a0 = Arguments(w0, .5, .5, c, d)
-    logger.info(("initialize (w0, A, B, c, d) = "
-                 "({w0}, {A}, {B}, {c}, {d})").format(**a0))
-    return a0
+def generate_lookup_function(z, w, h, method='ratio', model='huang', tol=1e-5):
+    """
+    TBA
 
-def fit_curve(df, na=5, max_iter=200, tol=1e-6):
-    a0 = _init_parameters(data)
+    Parameters
+    ----------
+    """
+    fw = fit_depth_curve(z, w, model, tol)
+    fh = fit_depth_curve(z, h, model, tol)
+
+    # find intersection
+    sol = root(lambda z: fw(z)-fh(z), (z.min()+z.max())/2., tol=tol)
+    if not sol.success:
+        raise RuntimeError("unable to find z-center")
+    elif sol.x.size > 1:
+        logger.warning("multiple intersections found, {}"
+                       ", using first one instead".format(sol.x))
+    z0 = sol.x[0]
+    logger.debug("intersection at z={:.4f}".format(z0))
+
+    method = lookup_method_dispatch.get(method)(fw, fh, z0, tol)
+    return method
