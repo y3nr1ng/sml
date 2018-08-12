@@ -4,11 +4,11 @@ from math import sqrt
 import numpy as np
 
 __all__ = [
-    'PolynomialModel',
-    'HuangModel'
+    'Polynomial',
+    'Huang'
 ]
 
-class BaseModel(object, metaclass=ABCMeta):
+class Base(object, metaclass=ABCMeta):
     __slots__ = ()
 
     @abstractmethod
@@ -68,20 +68,26 @@ class BaseModel(object, metaclass=ABCMeta):
         dump += ')'
         return dump
 
-class PolynomialModel(BaseModel):
+class Polynomial(Base):
     """
     Describe the relationship between the axial position of a molecule in its
     imaged widths along two perpendicular axes by a pair of second degree
     polynomials.
     """
-    __slots__ = ('w0', 'A', 'B', 'zc')
+    __slots__ = ('w0', 'a', 'b', 'c')
 
-class HuangModel(BaseModel):
+    def initial_guess(self, z, w):
+        pass
+
+    def _function(self, x, a, b, c):
+        return a * (x-c)**2 + b
+
+class Huang(Base):
     """
     The relationship between the axial position of a molecule and its imaged
     widths along perpendicular axes is given by Huang et al.
     """
-    __slots__ = ('w0', 'A', 'B', 'zc', 's')
+    __slots__ = ('w0', 'a', 'b', 'c', 'd')
 
     def initial_guess(self, z, w):
         iw_m = w.argmin()
@@ -102,9 +108,8 @@ class HuangModel(BaseModel):
             dw = ((w[iw_m-1]-w0) + (w[iw_m+1]-w0)) / 2.
         d = dz / sqrt(2. * dw/w0)
 
-        self.w0, self.A, self.B, self.zc, self.s = w0, .5, .5, zc, d
-
+        self.arguments = [w0, .5, .5, zc, d]
         return self.arguments, None
 
-    def _function(self, x, w0, A, B, zc, s):
-        return w0 * np.sqrt( 1 + ((x-zc)/s)**2 * (1 + A*((x-zc)/s) + B*((x-zc)/s)**2) )
+    def _function(self, x, w0, a, b, c, d):
+        return w0 * np.sqrt(1 + ((x-c)/d)**2 + a*((x-c)/d)**3 + b*((x-c)/d)**4)

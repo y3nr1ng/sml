@@ -5,15 +5,15 @@ from math import sqrt
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit, root
+from scipy.optimize import curve_fit, root, OptimizeWarning
 
-from .models import *
+from .defocus import *
 
 logger = logging.getLogger(__name__)
 
 model_dispatch = {
-    'polynomial': PolynomialModel,
-    'huang': HuangModel
+    'polynomial': Polynomial,
+    'huang': Huang
 }
 
 def fit_depth_curve(z, w, model='huang', tol=1e-5):
@@ -38,18 +38,15 @@ def fit_depth_curve(z, w, model='huang', tol=1e-5):
     logger.debug("p0: {}".format(model))
     try:
         p, _ = curve_fit(model, z, w, p0=p0, bounds=(-np.inf, np.inf), method='trf', xtol=tol)
-    except OptimizeWarning:
-        pass
-    except RuntimeError:
-        logger.error("unable to minimize the result")
+        model.arguments = p
+        logger.debug("popt: {}".format(model))
+    except (OptimizeWarning, RuntimeError):
+        raise RuntimeError("unable to minimize the result")
     except ValueError:
-        logger.error("provided samples contain NaNs")
-
-    model.arguments = p
-    logger.debug("popt: {}".format(model))
+        raise ValueError("provided samples contain NaNs")
     return model
 
-def generate_lookup_function(z, w, h, model='huang', tol=1e-5):
+def generate_lookup_function(z, w, h, method='diff', model='huang', tol=1e-5):
     fw = fit_depth_curve(z, w, model, tol)
     fh = fit_depth_curve(z, h, model, tol)
 
@@ -83,9 +80,17 @@ def generate_lookup_function(z, w, h, model='huang', tol=1e-5):
             #raise RuntimeError("unable to determine z position")
         return sol.x[0]-z0
 
+    find_depth_method = {
+        'mean': _find_depth_mean,
+        'ratio': _find_depth_ratio,
+        'diff': _find_depth_diff
+    }
+    _find_depth = find_depth_method.get(method)
+    if _find_depth is None:
+        raise ValueError("invalid method is provided")
+
     # generate the lookup function
     def find_depth(w, h):
-        _find_depth = _find_depth_diff
         if isinstance(w, np.ndarray) and isinstance(h, np.ndarray):
             return np.array([_find_depth(_w, _h) for _w, _h in np.c_[w, h]])
         else:

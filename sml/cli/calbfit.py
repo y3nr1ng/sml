@@ -25,18 +25,9 @@ def main(raw_input, output, verbose):
     z, x, y = data['z'].values, data['x'].values, data['y'].values
     f, fx, fy, z0 = generate_lookup_function(z, x, y, model='huang', tol=1e-5)
 
-    print("--- x ---")
-    print(fx)
     data['xo'] = fx(z)
-
-    print("--- y ---")
-    print(fy)
     data['yo'] = fy(z)
-
-    print("--- z_cal ---")
     data['zcal'] = f(x, y)
-
-    print("--- z0 ---")
     data['z0'] = data['z']-z0
 
     data.to_csv('result.csv', index=False, float_format='%.4f')
