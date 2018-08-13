@@ -4,40 +4,38 @@
 #include "pix.h"
 
 /*-------------------------------------------------------------------------
- *
- *	Bisection solver
- *
- *------------------------------------------------------------------------*/
+*
+*	Bisection solver
+*
+*------------------------------------------------------------------------*/
 
 static int bisection(double (*func)(void *, double, int *), void *fd,
-		     double x0, double y0, double dx, double tol, double *x)
-{
-    int    info=0, n=0;
+                     double x0, double y0, double dx, double tol, double *x) {
+    int info=0, n=0;
     double x1, y1;
 
     while (fabs(y0) > tol && n < 100) {
-	dx = dx / 2.0;
-	x1 = x0 + dx;
-	y1 = func(fd, x1, &info);
-	if (info != 0)
-	    return -1;
-	if (y0*y1 > 0.0) {
-	    x0 = x1;
-	    y0 = y1;
-	    x1 = x1 + dx;
-	}
-	n ++;
+        dx = dx / 2.0;
+        x1 = x0 + dx;
+        y1 = func(fd, x1, &info);
+        if (info != 0)
+            return -1;
+        if (y0*y1 > 0.0) {
+            x0 = x1;
+            y0 = y1;
+            x1 = x1 + dx;
+        }
+        n++;
     }
     *x = x0;
     return 0;
 }
 
 static int solver(double x0, double x1, double dx,
-		  double (*func)(void *, double, int *),
-		  double (*dfunc)(void *, double),
-		  void *fd, int nx, double *x, double *xdev)
-{
-    int    i, npt, nsol, info0, info1;
+                  double (*func)(void *, double, int *),
+                  double (*dfunc)(void *, double),
+                  void *fd, int nx, double *x, double *xdev) {
+    int i, npt, nsol, info0, info1;
     double y0, y1, tol;
 
     tol  = 1.e-10;
@@ -46,30 +44,29 @@ static int solver(double x0, double x1, double dx,
     npt = (int)((x1-x0)/dx)+1;
     y0  = func(fd, x0, &info0);
     for (i=0; i < npt; i++) {
-	y1 = func(fd, x0+dx, &info1);
-	if (info0 == 0 && info1 == 0 && nsol < nx && y0*y1 <= 0.0) {
-	    if (bisection(func, fd, x0, y0, dx, tol, x+nsol) == 0) {
-		xdev[nsol] = dfunc(fd, x[nsol]);
-		nsol ++;
-	    }
-	}
-	x0 = x0 + dx;
-	y0 = y1;
-	info0 = info1;
+        y1 = func(fd, x0+dx, &info1);
+        if (info0 == 0 && info1 == 0 && nsol < nx && y0*y1 <= 0.0) {
+            if (bisection(func, fd, x0, y0, dx, tol, x+nsol) == 0) {
+                xdev[nsol] = dfunc(fd, x[nsol]);
+                nsol++;
+            }
+        }
+        x0 = x0 + dx;
+        y0 = y1;
+        info0 = info1;
     }
     return nsol;
 }
 
 /*-------------------------------------------------------------------------
- *
- *	Solve z from wx or wy, respectively
- *
- *------------------------------------------------------------------------*/
+*
+*	Solve z from wx or wy, respectively
+*
+*------------------------------------------------------------------------*/
 
-static double func_ca(void *data, double x, int *info)
-{
+static double func_ca(void *data, double x, int *info) {
     calb3D_t      *dd = (calb3D_t *)data;
-    double         w0, y0, tmp;
+    double w0, y0, tmp;
     complex double A, B, c, d, zz;
 
     A   = dd->A[0] + dd->A[1]*I;
@@ -85,10 +82,9 @@ static double func_ca(void *data, double x, int *info)
     return (w0*tmp-y0);
 }
 
-static double func_dca(void *data, double x)
-{
+static double func_dca(void *data, double x) {
     calb3D_t      *dd = (calb3D_t *)data;
-    double         w0, y0, dy, dz, tmp;
+    double w0, y0, dy, dz, tmp;
     complex double A, B, c, d, z1, z2, z3, zz;
 
     w0  = dd->w0;
@@ -108,10 +104,9 @@ static double func_dca(void *data, double x)
     return dz;
 }
 
-int solve_z_w(para_t *p, calb3D_t *fd, double w, double dw, char *v, char *dv)
-{
-    int     n;
-    double  x1, x2, dx, z[4], dz[4];
+int solve_z_w(para_t *p, calb3D_t *fd, double w, double dw, char *v, char *dv) {
+    int n;
+    double x1, x2, dx, z[4], dz[4];
 
     x1 = p->z1;
     x2 = p->z2;
@@ -122,29 +117,27 @@ int solve_z_w(para_t *p, calb3D_t *fd, double w, double dw, char *v, char *dv)
     n = solver(x1, x2, dx, func_ca, func_dca, fd, 4, z, dz);
 
     if (n > 0) {
-	sprintf(v,  "%13.6E", z[0]);
-	sprintf(dv, "%10.3E", dz[0]);
-	return 0;
-    }
-    else {
-	sprintf(v,  "%13s", "n/a");
-	sprintf(dv, "%10s", "n/a");
-	return -1;
+        sprintf(v,  "%13.6E", z[0]);
+        sprintf(dv, "%10.3E", dz[0]);
+        return 0;
+    }else  {
+        sprintf(v,  "%13s", "n/a");
+        sprintf(dv, "%10s", "n/a");
+        return -1;
     }
 }
 
 /*-------------------------------------------------------------------------
- *
- *	Solve z from wx/wy
- *
- *------------------------------------------------------------------------*/
+*
+*	Solve z from wx/wy
+*
+*------------------------------------------------------------------------*/
 
-static double func_ca2(void *data, double x, int *info)
-{
+static double func_ca2(void *data, double x, int *info) {
     calb3D_t     **DD = (calb3D_t **)data;
     calb3D_t      *DX =  DD[0];
     calb3D_t      *DY =  DD[1];
-    double         y0, tx, ty;
+    double y0, tx, ty;
     complex double A, B, c, d, zz;
 
     A  = DX->A[0] + DX->A[1]*I;
@@ -166,12 +159,11 @@ static double func_ca2(void *data, double x, int *info)
     return (tx/ty-y0);
 }
 
-static double func_dca2(void *data, double x)
-{
+static double func_dca2(void *data, double x) {
     calb3D_t     **DD = (calb3D_t **)data;
     calb3D_t      *DX =  DD[0];
     calb3D_t      *DY =  DD[1];
-    double         y0, dy, err;
+    double y0, dy, err;
     complex double A, B, c, d, zz, z1, z2, z3, d1, d2, y1, y2;
 
     A  = DX->A[0] + DX->A[1]*I;
@@ -202,10 +194,9 @@ static double func_dca2(void *data, double x)
     return (dy/err);
 }
 
-int solve_z_wxowy(para_t *p, double *a, double *da, char *v, char *dv)
-{
-    int       n;
-    double    x1, x2, dx, wx, wy, dwx, dwy, z[4], dz[4];
+int solve_z_wxowy(para_t *p, double *a, double *da, char *v, char *dv) {
+    int n;
+    double x1, x2, dx, wx, wy, dwx, dwy, z[4], dz[4];
     calb3D_t *fd[2];
 
     fd[0] = (calb3D_t *)(&p->cax);
@@ -223,13 +214,12 @@ int solve_z_wxowy(para_t *p, double *a, double *da, char *v, char *dv)
     n = solver(x1, x2, dx, func_ca2, func_dca2, fd, 4, z, dz);
 
     if (n > 0) {
-	sprintf(v,  "%13.6E", z[0]);
-	sprintf(dv, "%10.3E", dz[0]);
-	return 0;
-    }
-    else {
-	sprintf(v,  "%13s", "n/a");
-	sprintf(dv, "%10s", "n/a");
-	return -1;
+        sprintf(v,  "%13.6E", z[0]);
+        sprintf(dv, "%10.3E", dz[0]);
+        return 0;
+    }else  {
+        sprintf(v,  "%13s", "n/a");
+        sprintf(dv, "%10s", "n/a");
+        return -1;
     }
 }
