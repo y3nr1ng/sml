@@ -23,11 +23,8 @@ columns = {
     'occurrences': np.uint32,
     # coordinate in the image
     'x': np.uint16,
-    'y': np.uint16,
-    # fitting results
-    #TODO adapt with ThunderSTORM convention
-    'parameters': ,
-    'chisq': np.float32
+    'y': np.uint16
+    #TODO fitting results
 }
 
 class Events(object):
