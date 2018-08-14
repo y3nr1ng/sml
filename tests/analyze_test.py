@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.argument('path', type=click.Path(exists=True))
 def main(path):
-    data = imageio.volread(path)
-    print(data.size)
-
-    raise RuntimeError
+    frames = imageio.volread(path)
+    print(data.shape)
 
     #TODO fetch data to analyzer
     analyzer = Analyzer()
+
+    analyzer.process(frames)
 
 if __name__ == '__main__':
     main()
