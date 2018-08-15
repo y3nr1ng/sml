@@ -1,4 +1,6 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
+
+import numpy as np
 
 __all__ = [
     'DifferenceImaging',
@@ -6,11 +8,9 @@ __all__ = [
 ]
 
 class Base(object):
-    def __init__(self, **kwargs):
+    @abstractmethod
+    def __call__(self, curr_frame):
         pass
-
-class DifferenceImaging(Base):
-    pass
 
 class WaveletFilter(Base):
     pass

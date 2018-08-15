@@ -7,16 +7,17 @@ from . import filters, detectors, estimators, events
 logger = logging.getLogger(__name__)
 
 filter_dispatch = {
-    'difference': filters.DifferenceImaging
 }
 
 class Analyzer(object):
     """
     Analyze localization events in provided frames.
     """
-    def __init__(self, data, filters='difference'):
-        self.data = data
-        self.filters = filter_dispatch.get(filters)
-        self.detectors = None
-        self.estimators = None
-        self.events = events.Event()
+    def __init__(self, filters='difference'):
+        #TODO retrieve processor primitives
+        self.detector = detectors.LocalMaximum(4, 10)
+        #TODO distributive computing
+
+    def process_frame(self, frame):
+        candidates = self.detector(frame)
+        return candidates

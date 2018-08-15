@@ -23,7 +23,8 @@ columns = {
     'occurrences': np.uint32,
     # coordinate in the image
     'x': np.uint16,
-    'y': np.uint16
+    'y': np.uint16,
+    'z': np.uint16
     #TODO fitting results
 }
 
@@ -31,3 +32,9 @@ class Events(object):
     def __init__(self):
         self._events = pd.DataFrame(columns=columns.keys())
         self._events = self._events.astype(columns)
+
+    def add_events(self, events):
+        pass
+
+    def add_event(self, event):
+        pass
