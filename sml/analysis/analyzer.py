@@ -15,7 +15,10 @@ class Analyzer(object):
     """
     def __init__(self, filters='difference'):
         #TODO retrieve processor primitives
+        self.events = events.Events()
+
         self.detector = detectors.LocalMaximum(4, 10)
+        
         #TODO distributive computing
 
     def process_frame(self, frame):

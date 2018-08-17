@@ -8,6 +8,9 @@ class Base(metaclass=ABCMeta):
     def __call__(self, frame):
         pass
 
+    def reset(self):
+        pass
+
 class LocalMaximum(Base):
     def __init__(self, radius, threshold=-np.inf):
         self._prev_frame = None
@@ -26,32 +29,56 @@ class LocalMaximum(Base):
         # use difference imaging technique
         d_frame = curr_frame - prev_frame
 
-        # ignore background
-        d_frame[d_frame < self.threshold] = 0
-
         # use masked array for elimination
-        m_frame = d_frame.view(ma.MaskedArray)
-        # sort by intensity, ascending
-        indices = m_frame.argsort(axis=None)
-        coords = []
-        for index in indices[::-1]:
-            y, x = np.unravel_index(index, frame.shape)
-            #NOTE subtract PSF instead of replace patch for multi-emitter
-            # detection
-
-            if d_frame[y, x] == 0:
-                continue
-
-            r = self.radius
-            if (x < r or y < r) or (x > frame.shape[1]-r+1 or y > frame.shape[0]-r+1):
-                continue
-            if not ma.is_masked(m_frame[y-r:y+r, x-r:x+r]):
-                m_frame[y-r:y+r, x-r:x+r] = ma.masked
-                coords.append((y, x))
+        d_frame = d_frame.view(ma.MaskedArray)
+        coords = self._find_peaks(d_frame)
 
         # replace selected result
-        mask = ma.getmaskarray(m_frame)
-        frame[mask] = prev_frame[mask]
-        self._prev_frame = frame
+        mask = ma.getmaskarray(d_frame)
+        curr_frame[mask] = prev_frame[mask]
+        self._prev_frame = curr_frame
 
         return coords
+
+    def _find_peaks(self, data):
+        """
+        TBA
+
+        Parameter
+        ---------
+        data : np.ndarray
+            A single timepoint.
+        """
+        if data.ndim < 2 or data.ndim > 3:
+            raise ValueError("not an image or volume")
+        ny, nx = data.shape[-2:]
+
+        indices = data.reshape((-1, nx*ny)).argsort(axis=1)
+        coords = []
+        for z in range(indices.shape[0]):
+            indices[z, ::-1] += z * (nx*ny)
+            for index in indices[z, ::-1]:
+                coord = np.unravel_index(index, dims=data.shape)
+
+                if data[coord] < self.threshold:
+                    # data is sorted, so rest of the pixels are background
+                    break
+
+                r = self.radius
+                y, x = coord[-2:]
+                if (x < r or y < r) or (x > nx-r+1 or y > ny-r+1):
+                    # border pixel, ignored
+                    continue
+
+                if data.ndim == 2:
+                    if not ma.is_masked(data[y-r:y+r+1, x-r:x+r+1]):
+                        data[y-r:y+r+1, x-r:x+r+1] = ma.masked
+                        coords.append(coord)
+                else:
+                    if not ma.is_masked(data[z, y-r:y+r+1, x-r:x+r+1]):
+                        data[z, y-r:y+r+1, x-r:x+r+1] = ma.masked
+                        coords.append(coord)
+        return np.array(coords).T
+
+    def reset(self):
+        self._prev_frame = None

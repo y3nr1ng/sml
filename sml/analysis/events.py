@@ -16,24 +16,47 @@ typedef struct {
 } sp_t;
 """
 
-columns = {
+columns_generic = {
     # last observed frame index
     'frame': np.uint32,
     # number of accumulated events
     'occurrences': np.uint32,
+    # fitting results
+    'intensity': np.float32
+    'background': np.float32
+}
+
+columns_2d = {
     # coordinate in the image
-    'x': np.uint16,
-    'y': np.uint16,
-    'z': np.uint16
-    #TODO fitting results
+    'x': np.float32,
+    'y': np.float32,
+    # fitting results
+    'uncertainty_xy': np.float32
+}
+
+columns_3d = {
+    # coordinate in the image
+    'x': np.float32,
+    'y': np.float32,
+    'z': np.float32,
+    # fitting results
+    'uncertainty_xy': np.float32,
+    'uncertainty_z': np.float32
 }
 
 class Events(object):
-    def __init__(self):
+    def __init__(self, dim):
+        if dim == '2d':
+            columns = {**columns_generic, **columns_2d}
+        elif dim == '3d':
+            columns = {**columns_generic, **columns_3d}
+        else:
+            raise ValueError("invalid result type")
+            
         self._events = pd.DataFrame(columns=columns.keys())
         self._events = self._events.astype(columns)
 
-    def add_events(self, events):
+    def preallocate_by(self, events):
         pass
 
     def add_event(self, event):
