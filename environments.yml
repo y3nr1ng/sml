@@ -16,3 +16,5 @@ dependencies:
 
   # io
   - pyyaml
+  - tifffile
+  - imageio

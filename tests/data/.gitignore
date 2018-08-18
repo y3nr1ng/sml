@@ -1,0 +1,6 @@
+# ignore all...
+*
+*/
+!.gitignore 
+
+# ... except these
