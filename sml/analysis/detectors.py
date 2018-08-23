@@ -11,7 +11,7 @@ class Base(metaclass=ABCMeta):
     def reset(self):
         pass
 
-class LocalMaximum(Base):
+class DifferenceImaging(Base):
     def __init__(self, radius, threshold=-np.inf):
         self.prev_frame = None
         self.threshold = threshold
@@ -22,7 +22,7 @@ class LocalMaximum(Base):
         # retrieve previous frame
         if self.prev_frame is None:
             self.prev_frame = curr_frame
-            return None, None
+            return None
 
         # use difference imaging technique
         diff_frame = curr_frame - self.prev_frame
@@ -34,7 +34,7 @@ class LocalMaximum(Base):
         curr_frame[mask] = self.prev_frame[mask]
         self.prev_frame = curr_frame
 
-        return coords, mask
+        return coords
 
     def _find_peaks(self, data):
         """
@@ -45,23 +45,20 @@ class LocalMaximum(Base):
         data : np.ndarray
             A single timepoint.
         """
-        shape = data.shape
-        ny, nx = shape[-2:]
-
+        ny, nx = data.shape[-2:]
+        nxy = nx * ny
         data = data.view(ma.MaskedArray)
 
-        if data.ndim == 2:
-            data = data.reshape((1, ny, nx))
-        elif data.ndim > 3:
-            raise ValueError("not an image or volume")
+        if data.ndim > 3 or data.ndim < 2:
+            raise ValueError("not a volume or image")
 
         candidates = []
 
         # ascending sort, by z
-        indices = data.reshape((-1, nx*ny)).argsort(axis=1)
+        indices = data.reshape((-1, nxy)).argsort(axis=1)
         for z, _indices in enumerate(indices):
             # convert back to 3d coordinate in reverse
-            _indices += (nx*ny) * z
+            _indices += nxy * z
             coords = np.unravel_index(_indices[::-1], dims=data.shape)
 
             for coord in zip(*list(coords)):
@@ -75,22 +72,13 @@ class LocalMaximum(Base):
                 if (x < r or y < r) or (x > nx-r+1 or y > ny-r+1):
                     continue
 
-                if not ma.is_masked(data[z, y-r:y+r+1, x-r:x+r+1]):
-                    data[z, y-r:y+r+1, x-r:x+r+1] = ma.masked
+                roi = [] if data.ndim == 2 else [z]
+                roi += [slice(y-r, y+r+1), slice(x-r, x+r+1)]
+                roi = tuple(roi)
+                if not ma.is_masked(data[roi]):
+                    data[roi] = ma.masked
                     candidates.append(coord)
 
-        candidates = np.array(candidates)
-        try:
-            data = data.reshape(-1, ny, nx)
-            data = data.squeeze(axis=0)
-
-            print("{}, squeezed".format(candidates.shape))
-
-            # 2d data
-            candidates = candidates[:, :0:-1]
-        except ValueError:
-            # 3d data cannot be squeezed
-            pass
         return candidates, ma.getmaskarray(data)
 
     def reset(self):
