@@ -23,14 +23,14 @@ lookup_method_dispatch = {
 
 def fit_depth_curve(z, w, model='huang', tol=1e-5):
     """
-    TBA
+    Generate the model fitting of z v.s. w.
 
     Parameters
     ----------
     z : np.ndarray
-        Depth.
+        Depth (spot z-coordinates).
     w : np.ndarray
-        Dependent variable of z.
+        Dependent variable of z (spot widths or heights).
     model : str
         Model to fit the curve, 'huang', 'polynomial' (TBA).
     tol : float
@@ -53,10 +53,16 @@ def fit_depth_curve(z, w, model='huang', tol=1e-5):
 
 def generate_lookup_function(z, w, h, method='ratio', model='huang', tol=1e-5):
     """
-    TBA
+    Generate the calibration curve from the experimental data.
 
     Parameters
     ----------
+    - z[:]:   z coordinates of the spots.
+    - w[:]:   spot widths of correspoinding z coordinate.
+    - w[:]:   spot heights of correspoinding z coordinate.
+    - method: 
+    - model:  model to fit the curve: 'huang', 'polynomial' (TBA)
+    - tol:    fitting tolerance.
     """
     fw = fit_depth_curve(z, w, model, tol)
     fh = fit_depth_curve(z, h, model, tol)
