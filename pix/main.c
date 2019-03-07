@@ -381,11 +381,10 @@ int main(int argc, char **argv) {
     frameIO_init(&p);
     if (p.frameID2 > p.frameID1) {
         spot_dframe(&p);
-        printf("\n");
         qsort(p.sp1, p.n_sp1, sizeof(sp_t *), spot_cmp);
         qsort(p.sp2, p.n_sp2, sizeof(sp_t *), spot_cmp);
         out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
-    }else {
+    } else {
         spot_sframe(&p);
         out_spotlist(p.outfnp, p.n_sp1, p.x_find_pixels, p.sp1);
     }

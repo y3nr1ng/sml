@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <omp.h>
 #include "pix.h"
 
 /*-------------------------------------------------------------------------
@@ -103,8 +102,7 @@ static void push_spot(para_t *p, int mode, int fID, int x, int y, short *simg) {
 
         dx = abs(x - sp[i]->x);
         dy = abs(y - sp[i]->y);
-        if ((dx == 0 && dy == 0) ||
-            (dx <= 1 && dy == 0) || (dx == 0 && dy <= 1)) {
+        if (dx + dy <= 1) {
             ii = i;
             break;
         }

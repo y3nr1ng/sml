@@ -22,7 +22,7 @@ columns_generic = {
     # number of accumulated events
     'occurrences': np.uint32,
     # fitting results
-    'intensity': np.float32
+    'intensity': np.float32,
     'background': np.float32
 }
 
@@ -52,7 +52,7 @@ class Events(object):
             columns = {**columns_generic, **columns_3d}
         else:
             raise ValueError("invalid result type")
-            
+
         self._events = pd.DataFrame(columns=columns.keys())
         self._events = self._events.astype(columns)
 

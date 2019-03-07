@@ -2,29 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <omp.h>
 #include "pix.h"
-
-/*-------------------------------------------------------------------------
-*
-*  Dump the spot square (for debug)
-*
-*------------------------------------------------------------------------*/
-
-static void spotdump(int sxdim, int sydim, int *sp) {
-    int x, y, k, xrng, yrng;
-
-    xrng = sxdim/2;
-    yrng = sydim/2;
-
-    k = 0;
-    for (y=-yrng; y <= yrng; y++) {
-        for (x=-xrng; x <= xrng; x++) {
-            printf("(x,y,II):  %03d %03d %d\n", x, y, sp[k]);
-            k++;
-        }
-    }
-}
 
 /*-------------------------------------------------------------------------
 *
@@ -187,7 +165,7 @@ int SpotFit(para_t *p, double *x_fit, double *y_fit, sp_t *sp) {
         if (da[1] > p->max_dx || da[2] > p->max_dy || da[3] > p->max_dwx ||
             a[0]/a[4] < p->min_SN || da[0]/a[0] > p->max_dI_I) return -1;
         a[3] = fabs(a[3]);
-    }else  {
+    } else {
         if (a[0]<0.0 || a[1]<0.0 || a[2]<0.0 || a[5]<0.0) return -1;
         if (a[1]  > p->max_x   || a[2]  > p->max_y) return -1;
         if (da[1] > p->max_dx  || da[2] > p->max_dy ||

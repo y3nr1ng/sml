@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef USE_OMP
-#include <omp.h>
-#endif
 #include "pix.h"
 
 /*-------------------------------------------------------------------------
@@ -23,7 +20,7 @@ int spot_cmp(const void *a, const void *b) {
             return 1;
         else
             return 0;
-    }else  {
+    } else {
         if (aa == NULL && bb == NULL)
             return 0;
         else if (aa == NULL)
@@ -42,17 +39,18 @@ int spot_cmp(const void *a, const void *b) {
 void spot_dframe(para_t *p) {
     frameIO_t  *fio;
     frameloc_t *fm0=NULL, *fm1=NULL;
-    int fID, fID0, fIDN, oneprec, n;
+    int fID, fID0, fIDN, twoperc, n;
 
     fID0 = p->frameID1;
     fIDN = p->frameID2;
     fio  = frameIO_Open(p);
-    oneprec = (fIDN-fID0+1) / 100;
+    twoperc = (fIDN-fID0+1) / 50;
+    printf("Frames for analysis: (%d,%d)\n", fID0, fIDN);
 
     fm1 = frameIO(p, fio, fIDN);        // load the *next* frame
     n   = 0;
     for (fID=fIDN-1; fID >= fID0; fID--) {
-        fm0 = frameIO(p, fio, fID); // load the *this* frame
+        fm0 = frameIO(p, fio, fID);     // load the *this* frame
         if (p->alg == 0)
             frameSpots(p, fm0, fm1);
         else
@@ -61,11 +59,12 @@ void spot_dframe(para_t *p) {
         frame_sum(p, fm0);
         fm1 = fm0;
         n++;
-        if (oneprec > 0 && n % oneprec == 0) {
+        if (twoperc > 0 && n % twoperc == 0) {
             fprintf(stderr, ".");
             fflush(stderr);
         }
     }
+    fprintf(stderr, "\n");
     frameIO_Close(p, fio);
     frameDelete(fm1);
 }
@@ -100,13 +99,13 @@ void spot_fitting(para_t *p) {
     FILE    *f;
     double  *x_fit, *y_fit, dt;
     sp_t   **sp;
-    int i, x, y, r, n, oneperc;
+    int i, x, y, r, n, twoperc;
     int sdim_x, sdim_y, x_rng, y_rng, imglen;
 
 //  Prepare to show the progress of running.
     printf("Found candidate spots: %d\n", p->n_sp1);
     fflush(stdout);
-    oneperc = p->n_sp1 / 100;
+    twoperc = p->n_sp1 / 50;
 
 //  Prepare coordinate of pixels of the spot, which is relative to its center.
     sdim_x = p->x_find_pixels;
@@ -134,12 +133,13 @@ void spot_fitting(para_t *p) {
     for (i=0; i < p->n_sp1; i++) {
         r = SpotFit(p, x_fit, y_fit, sp[i]);
         if (r == 0) n++;
-        if (oneperc > 0 && i % oneperc == 0) {
+        if (twoperc > 0 && i % twoperc == 0) {
             fprintf(stderr, ".");
             fflush(stderr);
         }
     }
-    printf("\nTotal valid particles: %d\n", n);
+    fprintf(stderr, "\n");
+    printf("Total valid particles: %d\n", n);
 
 //  Fitting for the high-intensity spots.
     sp = p->sp2;

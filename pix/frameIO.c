@@ -74,13 +74,13 @@ static void tiff_info(para_t *p, frameIO_t *fio) {
 }
 
 static frameloc_t *FR_tiff(para_t *p, frameIO_t *fio, int idx) {
+    tsize_t     s_strip;
+    tstrip_t    n_strip;
     frameloc_t *fm=NULL;
     TIFF       *tif=NULL;
-    tsize_t s_strip;
-    tstrip_t n_strip;
-    uint32     *bc, w, h, i;
+    uint32      w, h, i, psize;
     char       *data, *dp;
-    matmx_t mx;
+    matmx_t     mx;
 
     tif = (TIFF *)fio->imgf;
     if (TIFFSetDirectory(tif, (tdir_t)idx) != 1)
@@ -90,17 +90,18 @@ static frameloc_t *FR_tiff(para_t *p, frameIO_t *fio, int idx) {
     data    = _TIFFmalloc(s_strip*n_strip);
     dp      = data;
     if (data == NULL)
-        pstop("!!! TIFF: not enough memory.\n");
+        pstop("!!! TIFF %d: not enough memory.\n", idx);
+    if (TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &w) != 1)
+        pstop("!!! TIFF %d: cannot get tag: TIFFTAG_IMAGEWIDTH\n", idx);
+    if (TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &h) != 1)
+        pstop("!!! TIFF %d: cannot get tag: TIFFTAG_IMAGELENGTH\n", idx);
+    psize = (size_t)(s_strip*n_strip) / (size_t)(w*h);
+    if (psize != 2)
+        pstop("!!! TIFF: %d: pixel size should be 2 bytes.\n", idx);
 
-    w = p->img_W;
-    h = p->img_H;
-    if (TIFFGetField(tif, TIFFTAG_STRIPBYTECOUNTS, &bc) != 1)
-        pstop("!!! TIFF: cannot get tag: TIFFTAG_STRIPBYTECOUNTS\n");
-
-    for (i=0; i < n_strip; i++) {
-        if (TIFFReadRawStrip(tif, i, dp, bc[i]) != bc[i])
-            pstop("!!! TIFF: cannot read completed strip.\n");
-        dp += bc[i];
+    for (i=0; i < h; i++) {
+        TIFFReadScanline(tif, dp, i, 1);
+        dp += (w*psize);
     }
     mx.dim_x = w;
     mx.dim_y = h;

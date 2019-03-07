@@ -207,4 +207,9 @@ void   inp_getSTR(char *buf, char **pstr, int nline);
 double get_realtime(void);
 void   pstop(char *fmt, ...);
 
+#ifdef DEBUG
+void  spotdump(int sxdim, int sydim, int *sp);
+void  get_md5sum(const void *buf, size_t n);
+#endif
+
 #endif
